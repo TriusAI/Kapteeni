@@ -1,0 +1,25 @@
+{
+  "axes": {
+    "intelligence": 60.3003798521162,
+    "calibration": 90.0770562770563,
+    "speed": 81.05035352251977,
+    "cost": 42.345150959057094
+  },
+  "score": 65.70875036572502,
+  "tiers": {
+    "easy": 1.0,
+    "standard": 0.8888888888888888,
+    "hard": 0.46846846846846846
+  },
+  "public_accuracy": 0.70995670995671,
+  "ece": 0.04961471861471851,
+  "p50_s": 0.1675125549954828,
+  "p95_s": 1.1718102529994212,
+  "mean_input_tokens": 596.6233766233767,
+  "caveats": [
+    "judge tier sealed (weights renormalized)",
+    "calibration = ECE half only (TVD half is private)",
+    "latency measured on contended author hardware, x2-adjusted",
+    "cost = assumption-based estimate"
+  ]
+}

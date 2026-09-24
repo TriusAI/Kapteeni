@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+data_cache/
+model_cache/
+*.gguf
+*.safetensors
+*.pt
+.venv/
+jevbench/
+private/

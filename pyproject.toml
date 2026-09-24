@@ -1,0 +1,11 @@
+[project]
+name = "kapteeni"
+version = "0.1.0"
+description = "Jev-compatible System One decision model: state + typed questions -> calibrated probabilities, no text generation."
+requires-python = ">=3.11"
+license = "Apache-2.0"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q"
