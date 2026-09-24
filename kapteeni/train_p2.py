@@ -3,7 +3,11 @@ decision mix.
 
     python3 -m kapteeni.train_p2 --passes data_cache/passes_p2.jsonl \
         --bundle model_cache/kapteeni_v0.pt --out model_cache/kapteeni_p2 \
-        --token-budget 12288 --lr 1e-4 --epochs 1
+        --token-budget 7168 --lr 1e-4 --epochs 1
+
+    (v1's actual recipe: token-budget 8192 — 1205 steps, 8.7M tokens, peak
+    ~21G; the argparse default of 12288 predates v1 and yields fewer,
+    bigger batches. Soup seeds must match v1 at 8192.)
 
 Design (plan §6 P2, adjusted by today's findings):
   - LoRA r=32/alpha=64 on all attention+MLP projections (peft), bf16,

@@ -151,3 +151,31 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   accuracy (0.866) is still higher like-for-like; our I is renormalized
   without the sealed judge tier.
 - Served live as kapteeni-v1 (LoRA merged at startup).
+
+## 2026-09-25 — v1.1/v1.2 pre-registration, soup seeds in flight
+
+- HF distribution pack built and verified (pack.py, from_dist, --dist/--hf
+  serving; byte-parity noul/choice, score at 4th-decimal serialization
+  wobble). Publish steps in docs/PUBLISH-HF.md.
+- Pre-registered v1.1 + v1.2 before any new bench run
+  (docs/PREREG-V1.1-V1.2.md): 3-seed uniform soup of the exact v1 recipe,
+  then a weak-family continuation on new ground-truth-by-construction
+  data. Gates and reporting rules fixed in advance.
+- Recipe erratum found the hard way: v1's real token budget was 8192 (its
+  log: 1205 steps at 7.2k tok/step), not the 12288 argparse default
+  (765 batches) nor 7168 (1381). Relaunched seed 1 at 8192 -> exactly 1205
+  batches/12157 rows/81145 passes, matching v1's log line for line.
+- synth2.py: temporal_numeric v2 (6 date formats, business days w/ holiday
+  lists, boundary semantics, trap density), multi_hop (eligibility chains,
+  3-hop process chains, fee math, exception logic, clause specificity,
+  failure identification), long_policy (document grammar, distractor
+  clauses, multi-question docs). 6,300 rows / 11,498 passes / ~2.56M
+  tokens; selfcheck caught a real today.day==1 labeling bug; tests cover
+  determinism/schema/bin coverage.
+- soup.py (basis-independent merged-weight averaging, head averaging),
+  p2_finalize --merged-dir, serve --model/--fit. Production server
+  deliberately down during seed training (peak ~21G + server ~9G > 32G);
+  relaunch: kapteeni.serve --bundle model_cache/kapteeni_v1.pt --lora
+  model_cache/kapteeni_p2/adapter --port 8000.
+- Seeds auto-chain overnight (scripts/chain_seed2.sh: seed 2 launches on
+  seed 1's success marker, gives up cleanly on crash).

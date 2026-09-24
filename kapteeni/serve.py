@@ -16,9 +16,12 @@ import os
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from kapteeni.backbone import DEFAULT_MODEL
 from kapteeni.contract import ContractError, validate_request
 from kapteeni.mock import MockModel
 from kapteeni.model import SERVED_AS, SystemOneModel
+
+from pathlib import Path
 
 MODEL_CARDS = [
     {
@@ -111,6 +114,12 @@ def main(argv: list[str] | None = None) -> int:
                     help="packaged distribution dir (merged model + heads + config)")
     ap.add_argument("--hf", default="",
                     help="Hugging Face repo id of a packaged distribution")
+    ap.add_argument("--model", default="",
+                    help="--bundle path: merged model dir (e.g. a soup); "
+                         "default: the base backbone")
+    ap.add_argument("--fit", default="",
+                    help="blend constants json for --bundle/--lora serving; "
+                         "default: the Phase-1 fit file")
     args = ap.parse_args(argv)
 
     if args.hf:
@@ -123,8 +132,12 @@ def main(argv: list[str] | None = None) -> int:
     elif args.bundle:
         print(f"loading trained model from {args.bundle} "
               f"(readout: {args.readout}) ...", flush=True)
+        blend = (json.loads(Path(args.fit).read_text())
+                 if args.fit else None)
         model = SystemOneModel(args.bundle, readout=args.readout,
-                               lora=args.lora or None)
+                               lora=args.lora or None,
+                               model_name=args.model or DEFAULT_MODEL,
+                               blend=blend)
     else:
         print("serving MockModel (pass --bundle for the trained model)", flush=True)
         model = MockModel()

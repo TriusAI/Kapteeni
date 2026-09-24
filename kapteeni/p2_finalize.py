@@ -81,12 +81,22 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", default="model_cache/kapteeni_v1.pt")
     ap.add_argument("--fit-out", default="data_cache/phase1/fit_kv.json")
     ap.add_argument("--model", default=DEFAULT_MODEL)
+    ap.add_argument("--merged-dir", default="",
+                    help="use a pre-merged model dir (e.g. a soup) instead "
+                         "of --model + --lora")
     ap.add_argument("--device", default="cuda")
     args = ap.parse_args(argv)
 
     items = phase1.build_val_items()
     print(f"mixed-val items: {len(items)}")
-    model, tok = load_merged(args.model, args.lora, args.device)
+    if args.merged_dir:
+        print(f"loading merged model from {args.merged_dir} ...", flush=True)
+        model, tok = load_backbone(args.merged_dir, args.device)
+        for p in model.parameters():
+            p.requires_grad_(False)
+        model.eval()
+    else:
+        model, tok = load_merged(args.model, args.lora, args.device)
 
     heads = {}
     heads_sd = torch.load(args.heads, weights_only=True)
