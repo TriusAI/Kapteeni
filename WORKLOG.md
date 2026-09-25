@@ -212,3 +212,27 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   contract/version behavior, measured economics, in-band pre-registration
   manifests, bring-your-own private slices). Complementary to JevBench's
   red-team role; v0 buildable from this repo's own machinery.
+
+## 2026-09-26 — v1.2: Intelligence 62.0 (best measured) but flagship gate
+## fails on calibration; v1 stays shipped; protocol-level finding
+
+- Seed 3 (v1.2 candidate) trained on the passes_p2 + passes_synth2 union:
+  1507 steps / 11.1M tokens; final MNLI gate 0.9067, best of all seeds.
+- familyval.py built (new evaluator: per-family accuracy through the served
+  blend on the synth2 val slice; 90 tests green). Hypothesis CONFIRMED on
+  val: temporal_numeric 0.601->0.794, multi_hop 0.766->0.917, overall
+  0.659->0.806; mixed-val non-regression held (choice/score Brier better).
+- Public-half run: Intelligence 62.0, hard 0.496, accuracy 0.723 — all
+  best-ever — but val-fit choice constants (w 1.0, T 0.075) saturate to
+  1.0/0.0 and bench ECE quadrupled (0.0496 -> 0.2023). Composite 59.65 vs
+  v1's 65.71: flagship gate fails by 5+ points. v1 stays the shipped
+  headline; production server restored on v1.
+- Protocol-level finding (two independent failures: soup ECE x2, v1.2 ECE
+  x4): fitting blend constants on the narrow mixed-domain val is
+  systematically OOD-fragile. Proposed v1.2.1: same seed-3 model
+  artifacts, constants refit on a pre-registered deployment-diverse val
+  set (mixed + MNLI + synth2 val), one run, same gates. Also recorded the
+  accumulated-exposure caveat (fifth run; redesigns must stop being
+  bench-gated after this).
+- Artifacts kept: kapteeni_p2_s3, kapteeni_v1_2.pt, fit_kv_v1_2.json,
+  familyval JSONs, raw run docs/bench/kapteeni-v1.2-record-231.jsonl.

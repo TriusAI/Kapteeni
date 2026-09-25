@@ -190,6 +190,61 @@ the kapteeni-v1 raw run.
   each section above and analyzed alongside a design proposal for a
   deployment-oriented alternative in `docs/DECISIONBENCH-DRAFT.md`.
 
+## v1.2 (weak-family continuation): score 59.65 — better decisions, broken
+## confidence; the flagship gate fails and v1 stays shipped
+
+Pre-registered candidate: seed 3, fresh training on the union of the v1
+mix plus the synth2 weak-family data (17,848 rows / 91,554 passes /
+11.1M tokens). Every gate passed ahead of the run: final MNLI 0.9067
+(best of any seed), mixed-val non-regression (choice/score Brier
+improved, noul within the ECE resolution), and the direct hypothesis
+test on the 609-row synth2 val slice through the served readout:
+
+| family (n) | v1 | v1.2 |
+|---|---:|---:|
+| temporal_numeric (286) | 0.601 | **0.794** |
+| multi_hop (205) | 0.766 | **0.917** |
+| long_policy (118) | 0.610 | 0.644 |
+| overall (609) | 0.659 | **0.806** |
+
+The public-half run then split the verdict:
+
+| | v1 | v1.2 |
+|---|---:|---:|
+| easy / standard / hard | 1.000 / 0.889 / 0.469 | 1.000 / 0.889 / **0.496** |
+| public accuracy | 0.710 | **0.723** |
+| Intelligence | 60.3 | **62.0** (best measured) |
+| top-label ECE -> Calibration | 0.0496 -> 90.1 | **0.2023** -> 59.6 |
+| **score / slot** | **65.71 / ~#2** | 59.65 / ~#4 |
+
+The family data DID teach the skills — Intelligence, hard tier, and both
+target families improved — but the val-fit choice constants (pure head,
+w 1.0, T 0.075) saturate probabilities to 1.0/0.0 and are confidently
+wrong off-distribution, quadrupling bench ECE. The flagship gate
+(> 1.0 composite drop) fails decisively: **v1 remains the shipped
+model.**
+
+**The protocol-level finding.** Two independent runs now show the same
+mechanism: the soup (63.09) and v1.2 (59.65) both improved every val
+metric while their bench ECE exploded (0.0496 -> 0.1046 / 0.2023).
+Conclusion: fitting blend constants on the narrow mixed-domain val
+slices is systematically OOD-fragile — val-optimal sharpness does not
+transfer. The fix is not tuning against the bench (never); it is
+refitting constants on a *deployment-diverse* held-out set (mixed-domain
+val + MNLI val + synth2 val — all excluded from training by
+construction), pre-registered before any further run.
+
+**Accumulated-exposure note, honestly:** this is our fifth public-half
+run, and the last two redesigns were informed by bench outcomes. Each
+step was mechanism-driven and one-run-per-candidate, but the aggregate
+record is weakly bench-informed; the v1.2.1 protocol fix must be the
+last change gated this way, or the "no bench selection" claim erodes.
+
+Artifacts kept: `model_cache/kapteeni_p2_s3/` (adapter + heads),
+`kapteeni_v1_2.pt`, `data_cache/phase1/fit_kv_v1_2.json`, family-val
+JSONs (`data_cache/familyval_v1*.json`), raw run
+`docs/bench/kapteeni-v1.2-record-231.jsonl`.
+
 ## v1.1 (three-seed soup): score 63.09 — a negative result, kept honest
 
 Pre-registered (docs/PREREG-V1.1-V1.2.md) before the run: average three
