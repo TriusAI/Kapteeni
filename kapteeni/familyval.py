@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from kapteeni.backbone import DEFAULT_MODEL  # noqa: E402
 from kapteeni.build_data import is_val  # noqa: E402
+from kapteeni.metrics import ece  # noqa: E402
 from kapteeni.model import SystemOneModel  # noqa: E402
 
 
@@ -54,6 +55,23 @@ def score_row(answers: dict, row: dict) -> bool:
     return max(probs, key=probs.get) == row["label"]
 
 
+def top_label(answers: dict, row: dict) -> tuple[float, bool]:
+    """(confidence of the predicted label, whether it is correct) — the
+    inputs for top-label ECE, the direct measure of saturation."""
+    prim = row["primitive"]
+    if prim == "noul":
+        p = answers["noul"]
+        pred = p >= 0.5
+        return (p if pred else 1.0 - p), pred == bool(row["label"])
+    if prim == "choice":
+        probs = answers["probabilities"]
+        name = max(probs, key=probs.get)
+        return probs[name], name == row["meta"]["options"][row["label"]]
+    probs = {int(k): v for k, v in answers["probabilities"].items()}
+    top = max(probs, key=probs.get)
+    return probs[top], top == row["label"]
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--bundle", required=True)
@@ -77,11 +95,15 @@ def main(argv: list[str] | None = None) -> int:
                            lora=args.lora or None, blend=blend)
 
     stats: dict[tuple, list] = defaultdict(list)
+    confs: dict[tuple, list] = defaultdict(list)
     for i, row in enumerate(rows):
         qs = {"q": build_questions(row, criteria)}
         answers, _ = model.evaluate(row["state"], qs)
         ok = score_row(answers["q"], row)
+        conf, ok_tl = top_label(answers["q"], row)
         stats[(row["meta"]["family"], row["primitive"])].append(ok)
+        confs[(row["meta"]["family"], row["primitive"])].append(
+            (conf, 1.0 if ok_tl else 0.0))
         if (i + 1) % 100 == 0:
             print(f"  {i+1}/{len(rows)}", flush=True)
 
@@ -89,20 +111,31 @@ def main(argv: list[str] | None = None) -> int:
     lines = []
     for (fam, prim), oks in sorted(stats.items()):
         acc = sum(oks) / len(oks)
+        cf = confs[(fam, prim)]
         fams[fam].extend(oks)
-        lines.append(f"  {fam:16s} {prim:6s} n={len(oks):4d} acc={acc:.4f}")
+        lines.append(f"  {fam:16s} {prim:6s} n={len(oks):4d} acc={acc:.4f}"
+                     f" ece={ece([c for c, _ in cf], [y for _, y in cf]):.4f}")
     print("\n".join(lines))
     overall = [x for v in stats.values() for x in v]
+    fam_out = {}
     for fam, oks in sorted(fams.items()):
-        print(f"FAMILY {fam:16s} n={len(oks):4d} acc={sum(oks)/len(oks):.4f}")
+        cf = [(c, y) for (f, p), lst in confs.items() if f == fam
+              for c, y in lst]
+        fam_ece = ece([c for c, _ in cf], [y for _, y in cf])
+        fam_out[fam] = {"n": len(oks), "acc": sum(oks) / len(oks),
+                        "ece": fam_ece}
+        print(f"FAMILY {fam:16s} n={len(oks):4d} acc={sum(oks)/len(oks):.4f}"
+              f" ece={fam_ece:.4f}")
+    all_conf = [(c, y) for lst in confs.values() for c, y in lst]
+    tot_ece = ece([c for c, _ in all_conf], [y for _, y in all_conf])
     print(f"OVERALL                       n={len(overall):4d} "
-          f"acc={sum(overall)/len(overall):.4f}")
+          f"acc={sum(overall)/len(overall):.4f} ece={tot_ece:.4f}")
 
     if args.out:
         payload = {
             "overall_acc": sum(overall) / len(overall),
-            "families": {f: {"n": len(v), "acc": sum(v) / len(v)}
-                         for f, v in fams.items()},
+            "overall_ece": tot_ece,
+            "families": fam_out,
             "cells": {f"{f}|{p}": {"n": len(v), "acc": sum(v) / len(v)}
                       for (f, p), v in stats.items()},
             "n_rows": len(overall),

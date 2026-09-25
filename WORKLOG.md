@@ -236,3 +236,25 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   bench-gated after this).
 - Artifacts kept: kapteeni_p2_s3, kapteeni_v1_2.pt, fit_kv_v1_2.json,
   familyval JSONs, raw run docs/bench/kapteeni-v1.2-record-231.jsonl.
+
+## 2026-09-26 (later) — v1.2.1 diverse refit: gates 1-2 pass, gate 3 fails;
+## redesign budget retired, v1 stays shipped
+
+- fit_diverse.py built (temps+blend refit on mixed 590 + synth2 609 val,
+  grids unchanged, artifacts frozen) per docs/PREREG-V1.2.1.md; 93 tests
+  green (familyval ECE extension + fit_diverse).
+- Gate 1: v1.2.1 synth2-val ECE 0.0427 <= v1's 0.0630, family accuracies
+  kept (temporal 0.811/multi-hop 0.917). Gate 2: mixed-val within +0.02.
+  Saturation eliminated at the source (choice T 0.075 -> 0.724; served
+  0.951 where v1.2 served 1.000).
+- Gate 3 (the run): 63.18 < 64.71 — Intelligence 61.1, bench ECE 0.1196
+  (halved from v1.2 but above v1's 0.0496). v1 stays the shipped model;
+  production restored on it. Per the pre-registration, no further
+  bench-gated design changes.
+- Arc conclusions (all documented): family data is real but its artifacts
+  are less OOD-calibrated than v1's on the bench mix; synthetic val
+  slices share generator blind spots (v1.2: 0.035 ECE synth2 val vs 0.2023
+  bench) — feeds the DecisionBench shift-ladder design; sub-66 composite
+  differences sit inside the noise floor.
+- Artifacts kept: kapteeni_v1_2_1.pt, fit_kv_v1_2_1.json, familyval
+  v1/v1.2/v1.2.1 JSONs, raw run docs/bench/kapteeni-v1.2.1-record-231.jsonl.

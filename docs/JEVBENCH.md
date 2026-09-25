@@ -190,6 +190,44 @@ the kapteeni-v1 raw run.
   each section above and analyzed alongside a design proposal for a
   deployment-oriented alternative in `docs/DECISIONBENCH-DRAFT.md`.
 
+## v1.2.1 (diverse-constant refit): score 63.18 — directionally fixed, not
+## enough; the redesign budget is retired
+
+Pre-registered in docs/PREREG-V1.2.1.md: freeze the seed-3 artifacts,
+refit temperatures + blend on the deployment-diverse val set (mixed
+590 + synth2 609), grids unchanged. Gates 1 and 2 passed before the run:
+synth2-val ECE 0.0427 <= v1's 0.0630 (with every family-accuracy gain
+kept: temporal 0.811 / multi-hop 0.917), mixed-val within tolerance; the
+saturation itself is gone in the served output (choice 0.951 where v1.2
+served 1.000, temperature 0.724 where v1.2's fit gave 0.075).
+
+| | v1 | v1.2 | v1.2.1 |
+|---|---:|---:|---:|
+| Intelligence | 60.3 | **62.0** | 61.1 |
+| top-label ECE -> Calibration | **0.0496** -> 90.1 | 0.2023 -> 59.6 | 0.1196 -> 76.1 |
+| **score / slot** | **65.71 / ~#2** | 59.65 / ~#4 | 63.18 / ~#3 |
+
+Gate 3 fails (63.18 < 64.71): **v1 stays the shipped model**, and — as
+pre-registered — this is the last change gated on public-half outcomes.
+
+**What the whole v1.x arc establishes:**
+1. The family data is real (Intelligence 62.0, hard 0.496, synth2-val
+   +19pt/+15pt) — the seed-3 artifacts are kept for any future use that
+   prioritizes accuracy over this benchmark's calibration axis.
+2. The constants protocol was improved (saturation eliminated, bench
+   ECE halved) but v1's artifacts remain better transferable-calibrated
+   on the bench distribution; part of the residual is that synthetic
+   val slices share their generators' blind spots (v1.2 scores 0.035
+   ECE on synth2 val while its bench ECE was 0.2023) — a finding that
+   feeds the DecisionBench shift-ladder proposal directly.
+3. Below ~66 composite, differences sit inside the measured noise
+   floor and axis assumptions; further point-chasing on this
+   benchmark is not a productive use of runs.
+
+Raw run: `docs/bench/kapteeni-v1.2.1-record-231.jsonl`; summary:
+`data_cache/bench_v1_2_1/summary.json`; artifacts:
+`kapteeni_v1_2_1.pt`, `data_cache/phase1/fit_kv_v1_2_1.json`.
+
 ## v1.2 (weak-family continuation): score 59.65 — better decisions, broken
 ## confidence; the flagship gate fails and v1 stays shipped
 

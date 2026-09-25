@@ -40,10 +40,14 @@ recipe — scored 63.09 (vs v1's 65.71) and is documented as a negative result:
 mixed-val calibration improved while out-of-domain calibration collapsed.
 A second pre-registered experiment (v1.2, weak-family training data)
 improved Intelligence to a best-ever 62.0 but failed the flagship gate the
-same way (bench ECE 0.20) and is likewise not shipped. Both failures share
-one mechanism — serving constants fitted on narrow validation are
-OOD-fragile — documented in `docs/JEVBENCH.md`. v1 remains the shipped
-headline.*
+same way (bench ECE 0.20), and a third (v1.2.1, constants refit on
+deployment-diverse validation) fixed the saturation and halved that ECE
+but still scored 63.18. All three failures share one mechanism — serving
+constants fitted on narrow validation are OOD-fragile — documented in
+`docs/JEVBENCH.md`, which also retires the bench-informed redesign budget:
+v1 remains the shipped headline, and future work targets deployment-
+oriented evaluation (see docs/DECISIONBENCH-DRAFT.md) rather than this
+composite.*
 
 ### The four axes (official formulas)
 

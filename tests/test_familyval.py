@@ -1,6 +1,6 @@
 import json
 
-from kapteeni.familyval import build_questions, score_row
+from kapteeni.familyval import build_questions, score_row, top_label
 
 
 def _noul_row(label=1):
@@ -34,6 +34,23 @@ def test_build_questions_shapes():
                                                             "due_today"}
     q = build_questions(_score_row(), crit)
     assert q["type"] == "score" and q["criteria"] == ["a", "b", "c", "d"]
+
+
+def test_top_label_confidence_and_correctness():
+    # noul: predicted yes at p=0.7, gold 1 -> conf 0.7, correct
+    assert top_label({"noul": 0.7}, _noul_row(label=1)) == (0.7, True)
+    # predicted yes at p=0.7, gold 0 -> conf 0.7, wrong
+    assert top_label({"noul": 0.7}, _noul_row(label=0)) == (0.7, False)
+    # predicted no at p=0.3 -> conf 0.7
+    assert top_label({"noul": 0.3}, _noul_row(label=0)) == (0.7, True)
+    # saturated choice: conf 1.0
+    assert top_label({"choice": "due_today",
+                      "probabilities": {"overdue": 0.0,
+                                        "due_today": 1.0}},
+                     _choice_row(label=1)) == (1.0, True)
+    assert top_label({"probabilities": {"0": 0.1, "1": 0.2, "2": 0.6,
+                                        "3": 0.1}}, _score_row(label=2)) \
+        == (0.6, True)
 
 
 def test_score_row_all_primitives():
