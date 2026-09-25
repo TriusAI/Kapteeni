@@ -45,13 +45,30 @@ headline. Full analysis in `docs/JEVBENCH.md`.*
 
 | axis | value | how it is measured |
 |---|---:|---|
-| **Intelligence** | **60.3 / 100** | chance-corrected tier accuracy, weights easy .14 / standard .28 / hard .30 (renormalized — the judge tier is sealed) |
+| **Intelligence** | **60.3 / 100** | chance-corrected tier accuracy, weights easy .14 / standard .28 / hard .30 (renormalized — the judge tier is sealed); from public accuracy 0.710, 95% CI **±5.9pt** (n=231) |
 | **Calibration** | **90.1 / 100** | from top-label ECE **0.0496** across all 231 answers (ECE half only; the board also averages a private gold-distribution half) |
 | **Speed** | **81.1 / 100** | measured server latency p50 **0.17 s**, p95 **1.17 s** on an AMD Strix Halo iGPU, x2 self-hosted adjustment applied |
 | **Cost** | **42.4 / 100** | 597 input tokens/decision x assumed $0.14/M hosted list price = $0.083/1k decisions (at $0.05/M the axis would be 55.8) |
 
 Composite = equal-weight harmonic mean of the four axes (x the
 `(Intelligence/50)^2` gate for I<50 — kapteeni-v1 clears it at 60.3).
+
+### Reading the numbers honestly
+
+- **Neighbor gaps are ties.** With n=231 items, one item is 0.43 accuracy
+  points and the 95% CI on our public accuracy is ±5.9pt. Differences of a
+  few composite points among the 60–66 band (us, Jev, JevK5) are within
+  run-to-run variance and axis assumptions; "~#2" is cosmetic, not a claim
+  that we beat JevK5 or lose to classifier.dev on the merits.
+- **We measured our own noise floor.** v1 and the rejected soup (v1.1)
+  differ only by training seed and val-fitted constants; they scored 65.71
+  vs 63.09 — ~2.6 composite points of pipeline-level variability from a
+  single seed change (partly the soup mechanism, partly noise). Any
+  claimed improvement smaller than that is not evidence.
+- **Robust claims:** v1 ≫ v0.1 (17pt composite gap), best open rebuild on
+  the measurable half, and Jev's like-for-like public accuracy is still
+  significantly ahead (0.866 ± 4.4pt vs our 0.710 ± 5.9pt — the gap
+  survives both CIs). Everything finer-grained is assumptions and noise.
 
 ### Per-tier accuracy (231 items)
 

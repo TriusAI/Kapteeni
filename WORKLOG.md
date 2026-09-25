@@ -201,3 +201,14 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   evidence).
 - v1.2 seed 3 launched overnight: fresh run on the union
   passes_p2.jsonl + passes_synth2.jsonl (~11.3M tokens), budget 8192.
+- Statistical hygiene added to README + JEVBENCH.md after a methodology
+  review: binomial CIs on every run's accuracy, neighbor-gaps-are-ties,
+  a measured ~±2-3pt single-seed composite noise floor (from the
+  v1/v1.1 pair), ECE small-n caveats, and the val-vs-OOD calibration
+  failure mode stated as a general lesson.
+- docs/DECISIONBENCH-DRAFT.md: design proposal for a deployment-oriented
+  decision-model benchmark (cost-weighted decision quality at operating
+  points, per-slice calibration, shift ladders, injection resistance,
+  contract/version behavior, measured economics, in-band pre-registration
+  manifests, bring-your-own private slices). Complementary to JevBench's
+  red-team role; v0 buildable from this repo's own machinery.

@@ -160,6 +160,36 @@ methodology than v0.1's flagged w=0.25).
 The v0.1 record (48.21) and its raw run remain in `docs/bench/` alongside
 the kapteeni-v1 raw run.
 
+## Statistical hygiene: how to read every number above
+
+- **Sample sizes are small.** All accuracies are on 231 items (easy 48 /
+  standard 72 / hard 111). 95% binomial CIs on public accuracy: v0.1
+  0.615 ± 6.3pt, v1 0.710 ± 5.9pt, v1.1 soup 0.697 ± 5.9pt, Jev
+  0.866 ± 4.4pt (from the board column). The Jev-vs-us accuracy gap
+  survives both CIs; every other ordering claim at this sample size does
+  not. Tier-level CIs are wider still (hard: ±9.3pt at v1's 0.469).
+- **Neighbor gaps are ties.** The 2–4 composite-point gaps between the
+  60–66 band systems are inside run-to-run variance plus axis
+  assumptions (the Cost axis alone swings ±7 points across the stated
+  price range).
+- **A measured noise floor.** v1 vs the soup differ only by training seed
+  and val-fit constants and scored 65.71 vs 63.09 — treat ~±2–3 composite
+  points as the single-seed pipeline noise floor. Improvements below
+  that are not evidence; we pre-register and report deltas against it.
+- **ECE at n=231 is biased and high-variance.** Differences below ~0.02
+  between single runs are unresolvable; the soup's 0.0496 -> 0.1046
+  doubling is a real effect, but 0.05-vs-0.07 comparisons elsewhere in
+  the table should not be read as meaningful.
+- **Calibration is measured on the benchmark's distribution**, which is
+  OOD relative to any deployment: a model whose constants are tuned for
+  the bench mix is not thereby calibrated for yours. This failure mode
+  is not hypothetical — it is exactly how the soup passed every val gate
+  while its bench ECE doubled.
+- Benchmark-wide structural limits (self-reported public half, sealed
+  judge tier, assumed prices, hardware-confounded Speed) are restated in
+  each section above and analyzed alongside a design proposal for a
+  deployment-oriented alternative in `docs/DECISIONBENCH-DRAFT.md`.
+
 ## v1.1 (three-seed soup): score 63.09 — a negative result, kept honest
 
 Pre-registered (docs/PREREG-V1.1-V1.2.md) before the run: average three
