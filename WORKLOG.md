@@ -258,3 +258,19 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   differences sit inside the noise floor.
 - Artifacts kept: kapteeni_v1_2_1.pt, fit_kv_v1_2_1.json, familyval
   v1/v1.2/v1.2.1 JSONs, raw run docs/bench/kapteeni-v1.2.1-record-231.jsonl.
+
+## 2026-09-26 (later) — benchmark updated to v1.4.2 mid-work; docs restated
+
+- jevbench clone pulled to v1.4.2 (1bcc55e) via the local proxy (direct
+  github access was down; port 10081). v1.4.1 adds 6 systems, v1.4.2 adds
+  11 (93 total, 89 ranked); items, sealed set and composite formula all
+  unchanged — our runs of record remain valid as scored (reproduced the
+  board arithmetic: Jev's axes -> 63.33 vs official 63.29).
+- New verified #1: decider-4b v2 (Mapika) 64.13 — a 4B open system;
+  classifier.dev (70.82) still unranked. Our 65.71 is the highest
+  composite on the board as computable from the public half, restated
+  honestly: a tie with the verified top three (1.6-pt margin < measured
+  noise floor), sealed half unmeasurable for us (everyone: 33-39% sealed
+  vs 63-88% public), like-for-like public accuracy still behind Jev and
+  decider. The "best open rebuild by a wide margin" claim is retired in
+  the README; JEVBENCH.md documents the board update and placement restatement.

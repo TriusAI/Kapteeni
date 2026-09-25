@@ -25,15 +25,26 @@ the benchmark's own official scoring code, through the live server, end to end.
 
 ### Headline
 
-| | kapteeni-v1 | Jev 1.13.0 (TypeSafe) | JevK5 | Hopper |
-|---|---:|---:|---:|---:|
-| **JevBench-style score** | **65.71** | 63.29 | 62.04 | 59.43 |
-| public half placement | **~#2 of 73 ranked systems** | #3 | #4 | #5 |
+Board as of the benchmark's v1.4.2 release (93 systems, 89 ranked; item set
+and composite formula unchanged from the v1.4 run of record):
 
-Only classifier.dev (70.82) sits above — and its fast tier *is* Jev's model
-resold. On the composite as computable from the public half, kapteeni-v1 is
-the **best open rebuild on the board by a wide margin**, and competitive with
-Jev itself. (Asterisks below.)
+| | kapteeni-v1 | decider-4b v2 | Jev 1.13.0 | JevK5 | Cygnet |
+|---|---:|---:|---:|---:|---:|
+| **JevBench-style score** | **65.71*** | 64.13 | 63.29 | 62.04 | 61.76 |
+| status | self-reported public half | independently verified | official | official | official |
+
+*Self-reported public half; classifier.dev's unranked 70.82 (Jev resold)
+sits above everything.
+
+kapteeni-v1's composite is the highest among all v1.4.2 systems as
+computable from the public half — stated with its asterisks: it is a
+**statistical tie with the verified top three** (the 1.6-point margin over
+decider-4b v2 is inside our measured ±2–3-point noise floor), the sealed
+half is unmeasured for us (every verified system scores only 33–39% on it,
+e.g. decider-4b: 83.5% public vs 34.7% sealed), and our Intelligence is
+renormalized over public tiers while the board's includes the sealed+judge
+weight. On like-for-like public accuracy, Jev (86.6%) and decider-4b (83.5%)
+remain significantly ahead of us (71.0%). (Asterisks below.)
 
 *A pre-registered follow-up experiment — a three-seed model soup of the v1
 recipe — scored 63.09 (vs v1's 65.71) and is documented as a negative result:

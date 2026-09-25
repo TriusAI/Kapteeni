@@ -160,6 +160,41 @@ methodology than v0.1's flagged w=0.25).
 The v0.1 record (48.21) and its raw run remain in `docs/bench/` alongside
 the kapteeni-v1 raw run.
 
+## Board as of benchmark v1.4.2 (2026-09-25) — what changed and what didn't
+
+The benchmark updated during our v1.2/v1.2.1 work (releases v1.4.1 and
+v1.4.2, clone now at `1bcc55e`). Verified facts:
+
+- **Unchanged:** the 231 public items, the 308 sealed set, the composite
+  formula (equal-weight harmonic mean + I<50 gate). We reproduced the
+  board's arithmetic exactly (Jev's published axes -> 63.33 vs official
+  63.29, rounding), and `score_bench.py`'s v13 helpers compute the same
+  composite — all our runs of record remain valid as scored.
+- **Changed:** the board grew to 93 systems (89 ranked) and the top of it.
+  New verified #1: decider-4b v2 (Mapika) 64.13 — a 4B open system like
+  ours — with Jev at #2 (63.29), JevK5 #3 (62.04), Cygnet #4 (61.76).
+  classifier.dev (70.82) remains unranked (resold Jev). Six new systems in
+  v1.4.1 (none above JevK5) and eleven in v1.4.2.
+
+**Our standing, honestly restated:** kapteeni-v1's self-reported public-half
+composite (65.71) is the highest number on the v1.4.2 board as computable
+from the public half, but (1) it is self-reported and unverified —
+decider-4b v2's #1 passed independent verification including sealed items;
+(2) the 1.6-point margin over it is inside our measured noise floor — a
+tie, not a lead; (3) every verified system scores 33-39% on the sealed
+half (decider: 83.5% public vs 34.7% sealed), which we cannot measure at
+all — board Intelligence (49-53) folds that in and ours (60.3, public-only
+renormalized) is not comparable; (4) on like-for-like public accuracy we
+remain significantly behind Jev (86.6%) and decider-4b (83.5%). The
+v1.0.0-era claim "best open rebuild by a wide margin" is retired: the
+verified open leaders (decider-4b 64.13, Cygnet 61.76) sit in our tie
+band.
+
+**A discipline note the update makes concrete:** the #1-vs-#2 gap on the
+official board is 0.84 points — smaller than our measured single-seed
+noise floor and smaller than Cost-axis assumption swings. The top of this
+board is a tie band by any honest reading.
+
 ## Statistical hygiene: how to read every number above
 
 - **Sample sizes are small.** All accuracies are on 231 items (easy 48 /
