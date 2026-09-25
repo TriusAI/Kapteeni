@@ -288,3 +288,20 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   packs. 94 tests green.
 - Both distribution packs rebuilt: ../kapteeni-v1-meticulous-dist and
   ../kapteeni-v1-intuit-dist (the old single dist removed).
+
+## 2026-09-26 — Jev-class eligibility math + verified list price
+
+- The benchmark's Jev-class rule (cost <= $0.080/1k decisions, adjusted
+  median <= 1.30s): verified the hosted list price for the Qwen3-4B class
+  (Novita qwen3-4b-fp8 $0.03/M; Alibaba's nearest official tier qwen-turbo
+  $0.05/M). Our 597 tokens/decision -> $0.018-0.030/1k, 2.7-4.5x under the
+  cutoff; the old $0.14/M assumption ($0.0835/1k) was the only thing that
+  ever had us over the line, and it was pessimistic. README Cost row and
+  caveats updated with the verified prices.
+- Committee (both variants averaged at serving): adjusted p50 doubles
+  0.34s -> 0.68s, still 1.9x inside the 1.30s cutoff; cost axis unchanged
+  under the benchmark's per-decision billing convention (internal passes
+  invisible, as for every multi-pass system incl. Jev's per-option
+  passes). True serving cost is 2x GPU time — stated plainly in the docs.
+  Eligibility note added as descriptive fact (no placement claims,
+  per policy).

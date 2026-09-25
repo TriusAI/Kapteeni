@@ -58,8 +58,8 @@ them.
 |---|---:|---:|---|
 | **Intelligence** | 60.3 | **61.1** | chance-corrected tier accuracy, weights easy .14 / standard .28 / hard .30 (renormalized — the judge tier is sealed); from public accuracy 0.710 / 0.714, 95% CI **±5.9pt** (n=231) |
 | **Calibration** | **90.1** | 76.1 | from top-label ECE 0.0496 / 0.1196 across all 231 answers (ECE half only; the benchmark also averages a private gold-distribution half) |
-| **Speed** | 81.1 | 81.0 | measured server latency p50 **0.17 s**, p95 **1.2 s** on an AMD Strix Halo iGPU, x2 self-hosted adjustment applied |
-| **Cost** | 42.4 | 42.3 | 597 input tokens/decision x assumed $0.14/M hosted list price = $0.083/1k decisions (at $0.05/M the axis would be 55.8) |
+| **Speed** | 81.1 | 81.0 | measured server latency p50 **0.17 s**, p95 **1.2 s** on an AMD Strix Halo iGPU, x2 self-hosted adjustment applied (adjusted p50 0.34 s) |
+| **Cost** | 42.4 | 42.3 | 597 input tokens/decision x hosted list price — verified 2026-09-26: $0.03/M (Novita, qwen3-4b-fp8) = **$0.018/1k decisions**; nearest official Alibaba tier (qwen-turbo, $0.05/M) = $0.030/1k; the repo's earlier $0.14/M assumption ($0.083/1k) is kept as the pessimistic bound |
 
 Composite = equal-weight harmonic mean of the four axes (x the
 `(Intelligence/50)^2` gate for I<50 — both variants clear it).
@@ -136,8 +136,17 @@ paraphrase consistency: 0.861.
   judge tier is sealed; the benchmark's official Intelligence folds in the
   sealed+judge weight and is not comparable to ours.
 - Calibration is the ECE half only (the benchmark also averages private
-  gold-distribution fidelity); Cost rests on the stated $/M assumption;
+  gold-distribution fidelity); Cost uses the named hosted list price
+  ($0.03/M verified, $0.05/M nearest official tier; see the axis row);
   the sealed set rotates and a sealed measurement could differ.
+- **Jev-class eligibility (descriptive, from the benchmark's published
+  definition: cost <= $0.080/1k decisions, adjusted median latency
+  <= 1.30 s):** both variants qualify — $0.018-0.030/1k at verified
+  prices, adjusted p50 0.34 s. A two-variant committee serving mode would
+  measure ~0.68 s adjusted and the same per-decision cost under the
+  benchmark's per-decision billing convention — still within the
+  definition (its true serving cost is 2x GPU time, which the convention
+  does not see, as for every multi-pass system).
 - The benchmark updated to v1.4.2 during development (new systems measured;
   item set, sealed set, and composite formula unchanged) — our runs of
   record remain valid as scored.
