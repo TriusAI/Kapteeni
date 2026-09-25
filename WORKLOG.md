@@ -267,10 +267,24 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   unchanged — our runs of record remain valid as scored (reproduced the
   board arithmetic: Jev's axes -> 63.33 vs official 63.29).
 - New verified #1: decider-4b v2 (Mapika) 64.13 — a 4B open system;
-  classifier.dev (70.82) still unranked. Our 65.71 is the highest
-  composite on the board as computable from the public half, restated
-  honestly: a tie with the verified top three (1.6-pt margin < measured
-  noise floor), sealed half unmeasurable for us (everyone: 33-39% sealed
-  vs 63-88% public), like-for-like public accuracy still behind Jev and
-  decider. The "best open rebuild by a wide margin" claim is retired in
-  the README; JEVBENCH.md documents the board update and placement restatement.
+  classifier.dev (70.82) unranked. (Standing claims about the board were
+  removed from the docs later the same day, per the entry below; the
+  benchmark numbers of our own runs stay in docs/JEVBENCH.md.)
+
+## 2026-09-26 (final) — two shipped variants; leaderboard claims removed
+
+- User decision: (1) remove ALL leaderboard/placement claims from the
+  public docs — benchmark numbers stay, ranks and cross-system claims go;
+  score_bench.py no longer prints slot/neighbors; pack.py's model card is
+  numbers-only. (2) ship BOTH v1 (as kapteeni-v1-meticulous, conservative
+  confidence, the default) and v1.2.1 (as kapteeni-v1-intuit, sharper
+  decisions on well-formed numeric/temporal/multi-step traffic) — the
+  "good at different things" split is documented with per-variant numbers
+  and use-when guidance in the README's side-by-side table.
+- serve.py: --served-as (variant names accepted in requests alongside
+  jev-latest and the legacy kapteeni-v1; responses report the real variant
+  name; /v1/models describes the loaded variant). pack.py: --served-as /
+  --bundle, per-variant model cards. PUBLISH-HF.md rewritten for the two
+  packs. 94 tests green.
+- Both distribution packs rebuilt: ../kapteeni-v1-meticulous-dist and
+  ../kapteeni-v1-intuit-dist (the old single dist removed).

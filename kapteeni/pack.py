@@ -1,13 +1,19 @@
-"""Pack a Kapteeni distribution for release / Hugging Face.
+"""Pack a Kapteeni v1 variant distribution for release / Hugging Face.
 
-    python3 -m kapteeni.pack --out ../kapteeni-v1-dist
+    python3 -m kapteeni.pack --served-as kapteeni-v1-meticulous
+    python3 -m kapteeni.pack --served-as kapteeni-v1-intuit \
+        --lora model_cache/kapteeni_p2_s3/adapter \
+        --heads model_cache/kapteeni_p2_s3/heads.pt \
+        --bundle model_cache/kapteeni_v1_2_1.pt \
+        --fit data_cache/phase1/fit_kv_v1_2_1.json
 
-Produces a self-contained directory:
+Produces a self-contained directory (default ../kapteeni-v1-<variant>-dist):
   - merged model (base + LoRA) as safetensors + tokenizer   (--adapter-only
     for a small upload instead: peft adapter + instructions)
   - heads.safetensors (readout heads, no pickles)
-  - kapteeni-config.json (head temperatures, blend constants, metadata)
-  - README.md  — HF model card (frontmatter + benchmark + quickstart)
+  - kapteeni-config.json (variant name, head temperatures, blend constants)
+  - README.md  — variant-specific HF model card (frontmatter + numbers +
+    variant guidance; no leaderboard claims)
   - LICENSE (Apache-2.0, code) + WEIGHTS-LICENSE.md (CC BY-SA 4.0, weights)
   - kapteeni/  — the serving package, so the dist runs without the GitHub repo
 
@@ -28,8 +34,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from kapteeni.p2_finalize import load_merged  # noqa: E402
 
-SERVED_AS = "kapteeni-v1"
-
 MODEL_CARD = """---
 license: cc-by-sa-4.0
 base_model: Qwen/Qwen3-4B-Instruct-2507
@@ -44,12 +48,14 @@ language:
 library_name: transformers
 ---
 
-# Kapteeni v1 — a Jev-compatible System One decision model
+# Kapteeni v1 @@SERVED_AS@@ — a Jev-compatible System One decision model
 
 Send a `state` plus typed questions; get back **calibrated probability
 distributions** your code can branch on. No text generation. Kapteeni
 implements the [TypeSafe System One](https://docs.typesafe.ai) decision-model
 interface (the wire format of Jev, `POST /v1/systemone`).
+
+@@BLURB@@
 
 ## Quickstart
 
@@ -97,39 +103,25 @@ and calibration. `--readout head` or `--readout verb` select pure variants.
 ## Benchmark (JevBench v1.4 public half, self-reported)
 
 231 public decisions, scored with the benchmark's own code, end-to-end
-through the server:
+through the server. Numbers only — no placement claims; see caveats.
 
-| | kapteeni-v1 | Jev 1.13.0 | JevK5 | Hopper |
-|---|---:|---:|---:|---:|
-| JevBench-style score | **65.71** | 63.29 | 62.04 | 59.43 |
-| public-half placement | ~#2 of 73 | #3 | #4 | #5 |
+@@BENCH@@
 
-Axes: Intelligence 60.3 (chance-corrected tier accuracy; easy 1.000 /
-standard 0.889 / hard 0.469, pooled 0.710) · Calibration 90.1 (top-label
-ECE 0.0496) · Speed 81.1 (p50 0.17 s, p95 1.17 s on an AMD Strix Halo iGPU,
-x2 self-hosted adjustment) · Cost 42.4 (597 input tokens/decision at an
-assumed $0.14/M hosted price). Composite = harmonic mean; the
-Intelligence<50 gate does not apply.
+Axes common to both variants: Speed 81.0 (p50 0.17 s, p95 1.2 s on an
+AMD Strix Halo iGPU, x2 self-hosted adjustment) · Cost 42.4 (597 input
+tokens/decision at an assumed $0.14/M hosted price). Composite =
+harmonic mean; the Intelligence<50 gate does not apply.
 
 **Caveats, stated plainly:** self-reported public half (judge and sealed
 items are private; not an official rank); all serving constants
-pre-registered on mixed-domain validation (no benchmark selection); Jev's
-accuracy on the same public items is still higher (0.866 vs 0.710) — our
-Intelligence is renormalized without the sealed judge tier, so
-like-for-like Jev remains ahead; Calibration shown is the ECE half only.
+pre-registered on held-out validation (no benchmark selection);
+Intelligence is renormalized without the sealed judge tier; Calibration
+shown is the ECE half only. Differences of a few points are within
+single-seed pipeline noise (~±2-3 composite points, measured).
 
 ## How it was trained
 
-Qwen3-4B-Instruct-2507 (frozen for the data pipeline, then) LoRA r=32 on all
-attention and MLP projections for one epoch over an 8.7M-token decision mix:
-BoolQ + FEVER (teacher-soft-labeled with k=5 sampled agreement),
-Banking77, CLINC150, GoEmotions, HelpSteer2, and 3.6k synthetic
-temporal/numeric/policy items with ground truth by construction. Readout
-heads (2-layer MLPs on the final hidden state) trained with proper scoring
-rules only (BCE/CE vs soft targets; no preference losses). Per-head
-temperature scaling; blend constants fit on held-out mixed-domain
-validation. Out-of-domain gate: MNLI was excluded from training and held
-accuracy 0.88 -> 0.893 through all 1,205 steps.
+@@TRAINED@@
 
 ## Training data provenance
 
@@ -150,30 +142,110 @@ obligations). **Code: Apache-2.0** (`LICENSE`).
 
 ## Limitations
 
-- English-primary; long-policy and multi-hop reasoning remain weak
-  (hard-tier accuracy 0.469); temporal/numeric judgment is unreliable.
-- Probabilities are calibrated in aggregate (ECE 0.05); individual answers
-  are not guaranteed correct — branch on confidence where it matters.
+@@LIMITS@@
+- Probabilities are calibrated in aggregate; individual answers are not
+  guaranteed correct — branch on confidence where it matters.
 - Not affiliated with or endorsed by TypeSafe AI; "Jev" is their model and
   trademark; this is an independent implementation of the documented
-  interface, evaluated on Benchmark Heaven's public benchmark items.
+  interface, evaluated on the public JevBench items.
 """
+
+_VARIANT_TEXT = {
+    "kapteeni-v1-meticulous": {
+        "blurb": (
+            "**This variant: kapteeni-v1-meticulous** — conservative "
+            "confidence. The safe default for unknown or messy traffic.\n\n"
+            "Kapteeni v1 ships as two variants of the same architecture. "
+            "The other, kapteeni-v1-intuit, decides more accurately on "
+            "well-formed numeric, temporal, and multi-step policy traffic "
+            "but is less careful about its confidence there."
+        ),
+        "bench": (
+            "| JevBench-style score | Intelligence | top-label ECE | public accuracy |\n"
+            "|---:|---:|---:|---:|\n"
+            "| **65.71** | 60.3 | 0.0496 (Calibration 90.1) | 0.710 (easy 1.000 / standard 0.889 / hard 0.469) |"
+        ),
+        "trained": (
+            "Qwen3-4B-Instruct-2507 (frozen for the data pipeline, then) "
+            "LoRA r=32 on all attention and MLP projections for one epoch "
+            "over an 8.7M-token decision mix: BoolQ + FEVER "
+            "(teacher-soft-labeled with k=5 sampled agreement), Banking77, "
+            "CLINC150, GoEmotions, HelpSteer2, and 3.6k synthetic "
+            "temporal/numeric/policy items with ground truth by "
+            "construction. Readout heads (2-layer MLPs on the final hidden "
+            "state) trained with proper scoring rules only. Per-head "
+            "temperature scaling; blend constants fit on held-out "
+            "mixed-domain validation. Out-of-domain gate: MNLI excluded "
+            "from training, held 0.88 -> 0.893 through all 1,205 steps."
+        ),
+        "limits": (
+            "- English-primary; long-policy and multi-hop reasoning remain "
+            "weak (hard-tier accuracy 0.469); temporal/numeric judgment is "
+            "unreliable on this variant — prefer -intuit for such traffic."
+        ),
+    },
+    "kapteeni-v1-intuit": {
+        "blurb": (
+            "**This variant: kapteeni-v1-intuit** — sharper decisions. "
+            "Strongest on well-formed numeric, temporal, and multi-step "
+            "policy traffic (measured skills-slice accuracy 0.81 vs 0.66 "
+            "for -meticulous, with better calibration on that slice).\n\n"
+            "Kapteeni v1 ships as two variants of the same architecture. "
+            "The other, kapteeni-v1-meticulous, is the conservative-"
+            "confidence default for unknown or messy traffic."
+        ),
+        "bench": (
+            "| JevBench-style score | Intelligence | top-label ECE | public accuracy |\n"
+            "|---:|---:|---:|---:|\n"
+            "| **63.18** | 61.1 | 0.1196 (Calibration 76.1) | 0.714 (easy 1.000 / standard 0.903 / hard 0.468) |"
+        ),
+        "trained": (
+            "Qwen3-4B-Instruct-2507 with LoRA r=32 on all attention and "
+            "MLP projections for one epoch over an 11.1M-token union of "
+            "the base decision mix (BoolQ/FEVER soft labels, Banking77, "
+            "CLINC150, GoEmotions, HelpSteer2, synthetic v1) plus 6.3k "
+            "synth2 items: temporal/numeric with wide format and boundary "
+            "diversity, multi-hop eligibility/process/fee chains, and "
+            "grammar-built long policy documents — all ground truth by "
+            "construction. MNLI OOD gate held 0.88 -> 0.907. Serving "
+            "constants (temperatures, blend) refit on a deployment-diverse "
+            "held-out set (mixed-domain val + the synth2 val slice) per a "
+            "pre-registered protocol; saturation-checked end to end."
+        ),
+        "limits": (
+            "- Confidence on messy, adversarial, or out-of-distribution "
+            "inputs is less reliable than -meticulous (public-half ECE "
+            "0.12 vs 0.05): on unknown traffic, prefer -meticulous."
+        ),
+    },
+}
+
+
+def _variant_text(served_as: str) -> dict:
+    return _VARIANT_TEXT.get(served_as) or _VARIANT_TEXT["kapteeni-v1-meticulous"]
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default="../kapteeni-v1-dist")
+    ap.add_argument("--out", default="",
+                    help="default: ../kapteeni-v1-<variant>-dist")
+    ap.add_argument("--served-as", default="kapteeni-v1-meticulous",
+                    choices=["kapteeni-v1", "kapteeni-v1-meticulous",
+                             "kapteeni-v1-intuit"])
     ap.add_argument("--model", default="Qwen/Qwen3-4B-Instruct-2507")
     ap.add_argument("--lora", default="model_cache/kapteeni_p2/adapter")
     ap.add_argument("--heads", default="model_cache/kapteeni_p2/heads.pt")
     ap.add_argument("--fit", default="data_cache/phase1/fit_kv.json")
+    ap.add_argument("--bundle", default="model_cache/kapteeni_v1.pt",
+                    help="head bundle whose temperatures the config carries")
     ap.add_argument("--device", default="cuda")
     ap.add_argument("--adapter-only", action="store_true",
                     help="ship the LoRA adapter (~300MB) instead of the "
                          "merged model (~8GB); users merge at load time")
     args = ap.parse_args(argv)
 
-    out = Path(args.out)
+    variant = ("intuit" if "intuit" in args.served_as else "meticulous")
+    out = Path(args.out or f"../kapteeni-v1-{variant}-dist")
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
@@ -207,21 +279,28 @@ def main(argv: list[str] | None = None) -> int:
 
     fit = json.loads(Path(args.fit).read_text())
     cfg = {
-        "served_as": SERVED_AS,
+        "served_as": args.served_as,
         "in_dim": model.config.hidden_size,
         "head_temperatures": {},  # filled below
         "blend": fit,
         "readout": "blend",
         "format": "kapteeni-dist-v1",
     }
-    # temperatures from the v1 bundle
-    bundle = torch.load("model_cache/kapteeni_v1.pt", weights_only=False)
+    # temperatures from the variant's head bundle
+    bundle = torch.load(args.bundle, weights_only=False)
     cfg["head_temperatures"] = {qt: bundle[qt]["T"]
                                 for qt in ("noul", "choice", "score")}
     (out / "kapteeni-config.json").write_text(json.dumps(cfg, indent=2))
 
     # model card + licenses + the code package
-    (out / "README.md").write_text(MODEL_CARD, encoding="utf-8")
+    vt = _variant_text(args.served_as)
+    card = (MODEL_CARD
+            .replace("@@SERVED_AS@@", args.served_as)
+            .replace("@@BLURB@@", vt["blurb"])
+            .replace("@@BENCH@@", vt["bench"])
+            .replace("@@TRAINED@@", vt["trained"])
+            .replace("@@LIMITS@@", vt["limits"]))
+    (out / "README.md").write_text(card, encoding="utf-8")
     root = Path(__file__).parent.parent
     shutil.copy(root / "LICENSE", out / "LICENSE")
     shutil.copy(root / "WEIGHTS-LICENSE.md", out / "WEIGHTS-LICENSE.md")

@@ -19,7 +19,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from kapteeni.backbone import DEFAULT_MODEL
 from kapteeni.contract import ContractError, validate_request
 from kapteeni.mock import MockModel
-from kapteeni.model import SERVED_AS, SystemOneModel
+from kapteeni.model import SystemOneModel
 
 from pathlib import Path
 
@@ -27,19 +27,22 @@ MODEL_CARDS = [
     {
         "name": "jev-latest",
         "description": "Alias for the latest kapteeni implementation model.",
-        "release_date": "2026-09-24",
-    },
-    {
-        "name": SERVED_AS,
-        "description": "From-scratch implementation of TypeSafe's Jev: frozen "
-        "Qwen3-4B-Instruct-2507 backbone + calibrated readout heads.",
-        "release_date": "2026-09-24",
+        "release_date": "2026-09-26",
     },
 ]
-ACCEPTED_MODELS = {"jev-latest", SERVED_AS}
+VARIANT_INFO = {
+    "kapteeni-v1": "(legacy name for kapteeni-v1-meticulous)",
+    "kapteeni-v1-meticulous": "Conservative confidence: calibrated on "
+        "messy, out-of-distribution inputs; the safe default for unknown "
+        "traffic.",
+    "kapteeni-v1-intuit": "Sharper decisions: strongest on well-formed "
+        "numeric, temporal, and multi-step policy traffic.",
+}
+ACCEPTED_MODELS = {"jev-latest", "kapteeni-v1", "kapteeni-v1-meticulous",
+                   "kapteeni-v1-intuit"}
 
 
-def make_handler(model, api_key: str | None):
+def make_handler(model, api_key: str | None, served_as: str):
     lock = threading.Lock()
 
     class Handler(BaseHTTPRequestHandler):
@@ -65,7 +68,15 @@ def make_handler(model, api_key: str | None):
                 if not self._authed():
                     self._json(401, {"error": {"message": "missing or invalid API key"}})
                     return
-                self._json(200, {"models": MODEL_CARDS})
+                cards = MODEL_CARDS + [{
+                    "name": served_as,
+                    "description": "From-scratch implementation of the "
+                    "TypeSafe System One interface: frozen "
+                    "Qwen3-4B-Instruct-2507 backbone + calibrated readout "
+                    "heads. " + VARIANT_INFO.get(served_as, ""),
+                    "release_date": "2026-09-26",
+                }]
+                self._json(200, {"models": cards})
             else:
                 self._json(404, {"error": {"message": f"no route for {self.path}"}})
 
@@ -95,7 +106,8 @@ def make_handler(model, api_key: str | None):
                 return
             with lock:  # one GPU; serialize inference
                 answers, usage = model.evaluate(state, questions)
-            self._json(200, {"model": SERVED_AS, "answers": answers, "usage": usage})
+            self._json(200, {"model": served_as, "answers": answers,
+                             "usage": usage})
 
     return Handler
 
@@ -120,14 +132,23 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--fit", default="",
                     help="blend constants json for --bundle/--lora serving; "
                          "default: the Phase-1 fit file")
+    ap.add_argument("--served-as", default="",
+                    help="name reported in responses and /v1/models; "
+                         "default: the dist's own config, else kapteeni-v1 "
+                         "(legacy name for -meticulous)")
     args = ap.parse_args(argv)
 
+    served_as = args.served_as
     if args.hf:
         from huggingface_hub import snapshot_download
 
         args.dist = snapshot_download(args.hf)
     if args.dist:
         print(f"loading packaged distribution from {args.dist} ...", flush=True)
+        cfg = json.loads((Path(args.dist) / "kapteeni-config.json")
+                         .read_text()) if Path(args.dist,
+                                              "kapteeni-config.json").exists() else {}
+        served_as = served_as or cfg.get("served_as", "")
         model = SystemOneModel.from_dist(args.dist, readout=args.readout)
     elif args.bundle:
         print(f"loading trained model from {args.bundle} "
@@ -141,9 +162,15 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print("serving MockModel (pass --bundle for the trained model)", flush=True)
         model = MockModel()
+    served_as = served_as or "kapteeni-v1"
+    if served_as not in (ACCEPTED_MODELS - {"jev-latest"}):
+        print(f"error: unknown --served-as {served_as!r}", flush=True)
+        return 2
     api_key = os.environ.get("KAPTEENI_API_KEY") or None
-    httpd = ThreadingHTTPServer((args.host, args.port), make_handler(model, api_key))
-    print(f"listening on http://{args.host}:{args.port}", flush=True)
+    httpd = ThreadingHTTPServer((args.host, args.port),
+                                make_handler(model, api_key, served_as))
+    print(f"listening on http://{args.host}:{args.port} "
+          f"(served as {served_as})", flush=True)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

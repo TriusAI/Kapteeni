@@ -69,7 +69,7 @@ def main() -> int:
 
     intel = intelligence(tiers)
     overall = sum(bool(r.get("correct")) for r in scorable) / len(scorable)
-    print(f"\npublic accuracy (231 items, comparable to board column): {overall:.4f}")
+    print(f"\npublic accuracy (231 items): {overall:.4f}")
     print(f"Intelligence (3 public tiers, judge sealed -> renormalized): {intel:.2f}")
 
     # ---- calibration: top-label ECE half only
@@ -108,20 +108,6 @@ def main() -> int:
     score = jevbench_score(axes)
     print("\naxes:", {k: round(v, 2) for k, v in axes.items()})
     print(f"JevBench-style score (public half, all caveats above): {score:.2f}")
-
-    # ---- placement against the official v1.4 board
-    board = json.load(open(root / "results/v1.4/jevbench-v1.4-results.json"))
-    rows = [s for s in board["systems"] if s.get("jevbench_score") is not None]
-    rows.sort(key=lambda r: -r["jevbench_score"])
-    better = sum(1 for r in rows if r["jevbench_score"] > score)
-    print(f"\nwould slot at ~#{better + 1} of {len(rows)} ranked systems "
-          f"(self-reported public half; NOT an official rank)")
-    near = [r for r in rows if abs(r["jevbench_score"] - score) < 8]
-    for r in near:
-        a = r["axes"]
-        print(f"  neighbor: {r['display'][:50]:<50} {r['jevbench_score']:.2f} "
-              f"(I {a['intelligence']:.1f} C {a['calibration']:.1f} "
-              f"S {a['speed']:.1f} $ {a['cost']:.1f})")
     out = {"axes": axes, "score": score, "tiers": tiers,
            "public_accuracy": overall, "ece": ece, "p50_s": p50, "p95_s": p95,
            "mean_input_tokens": mean_tok,

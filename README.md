@@ -1,9 +1,10 @@
 # Kapteeni — a Jev-compatible System One decision model
 
-**Status: v1 (P2 LoRA) trained, evaluated & served** — `docs/EVAL.md` for
-calibration, `docs/JEVBENCH.md` for the JevBench v1.4 public-half placement:
-kapteeni-v1 scores 65.71, ~#2 of 73 systems (best open rebuild; asterisks
-stated in that document).
+**Status: v1 trained, evaluated & served as two variants** — kapteeni-v1-
+meticulous (conservative confidence; the default) and kapteeni-v1-intuit
+(sharper decisions on well-formed numeric/temporal/multi-step traffic).
+`docs/JEVBENCH.md` holds every benchmark number and the full experiment
+history; `docs/EVAL.md` the calibration report.
 
 Jev (docs.typesafe.ai) is a *System One* decision model: you send a `state` plus
 typed questions and get back **calibrated probability distributions your code
@@ -19,86 +20,77 @@ state + questions ──▶ serialize ──▶ Qwen3-4B (LoRA-adapted) ──�
 
 ## Benchmark: JevBench v1.4 public half
 
-Kapteeni v1 is evaluated on the public half of JevBench (the benchmark for
+Kapteeni is evaluated on the public half of JevBench (the benchmark for
 Jev-class decision models; 231 items: easy 48 / standard 72 / hard 111) using
-the benchmark's own official scoring code, through the live server, end to end.
+the benchmark's own official scoring code, through the live server, end to
+end. Numbers only — this repo makes no placement claims about the
+benchmark's leaderboard; the caveats below describe what the numbers do
+and do not measure.
 
-### Headline
+### The two shipped variants, side by side
 
-Board as of the benchmark's v1.4.2 release (93 systems, 89 ranked; item set
-and composite formula unchanged from the v1.4 run of record):
+Both variants share one architecture and one wire format; they differ in
+training data and serving constants, and are good at different things:
 
-| | kapteeni-v1 | decider-4b v2 | Jev 1.13.0 | JevK5 | Cygnet |
-|---|---:|---:|---:|---:|---:|
-| **JevBench-style score** | **65.71*** | 64.13 | 63.29 | 62.04 | 61.76 |
-| status | self-reported public half | independently verified | official | official | official |
+| | v1-meticulous | v1-intuit |
+|---|---:|---:|
+| JevBench-style score (public half) | **65.71** | 63.18 |
+| Intelligence | 60.3 | **61.1** |
+| top-label ECE → Calibration | **0.0496 → 90.1** | 0.1196 → 76.1 |
+| public accuracy (easy / standard / hard) | 0.710 (1.000 / 0.889 / 0.469) | **0.714** (1.000 / 0.903 / 0.468) |
+| skills-slice accuracy (609 held-out items: temporal / multi-hop / policy) | 0.659 | **0.814** |
+| skills-slice ECE | 0.063 | **0.043** |
+| use when | traffic is unknown, messy, adversarial; confidence values are consumed downstream | traffic is well-formed (documents, policies, SLAs, forms) and needs numeric, temporal, or multi-step judgment |
 
-*Self-reported public half; classifier.dev's unranked 70.82 (Jev resold)
-sits above everything.
-
-kapteeni-v1's composite is the highest among all v1.4.2 systems as
-computable from the public half — stated with its asterisks: it is a
-**statistical tie with the verified top three** (the 1.6-point margin over
-decider-4b v2 is inside our measured ±2–3-point noise floor), the sealed
-half is unmeasured for us (every verified system scores only 33–39% on it,
-e.g. decider-4b: 83.5% public vs 34.7% sealed), and our Intelligence is
-renormalized over public tiers while the board's includes the sealed+judge
-weight. On like-for-like public accuracy, Jev (86.6%) and decider-4b (83.5%)
-remain significantly ahead of us (71.0%). (Asterisks below.)
-
-*A pre-registered follow-up experiment — a three-seed model soup of the v1
-recipe — scored 63.09 (vs v1's 65.71) and is documented as a negative result:
-mixed-val calibration improved while out-of-domain calibration collapsed.
-A second pre-registered experiment (v1.2, weak-family training data)
-improved Intelligence to a best-ever 62.0 but failed the flagship gate the
-same way (bench ECE 0.20), and a third (v1.2.1, constants refit on
-deployment-diverse validation) fixed the saturation and halved that ECE
-but still scored 63.18. All three failures share one mechanism — serving
-constants fitted on narrow validation are OOD-fragile — documented in
-`docs/JEVBENCH.md`, which also retires the bench-informed redesign budget:
-v1 remains the shipped headline, and future work targets deployment-
-oriented evaluation (see docs/DECISIONBENCH-DRAFT.md) rather than this
-composite.*
+*The negative-result trail behind this split:* a three-seed model soup
+(63.09), a weak-family continuation (59.65), and a constants refit (63.18 —
+the intuit variant) were each pre-registered and run once. All three
+improved measured val metrics while degrading benchmark calibration; the
+shared mechanism — serving constants fitted on narrow validation are
+OOD-fragile — is documented in `docs/JEVBENCH.md`, which also retires the
+bench-informed redesign budget. Rather than discard the best-deciding
+artifacts, they ship as -intuit with honest guidance about when to prefer
+them.
 
 ### The four axes (official formulas)
 
-| axis | value | how it is measured |
-|---|---:|---|
-| **Intelligence** | **60.3 / 100** | chance-corrected tier accuracy, weights easy .14 / standard .28 / hard .30 (renormalized — the judge tier is sealed); from public accuracy 0.710, 95% CI **±5.9pt** (n=231) |
-| **Calibration** | **90.1 / 100** | from top-label ECE **0.0496** across all 231 answers (ECE half only; the board also averages a private gold-distribution half) |
-| **Speed** | **81.1 / 100** | measured server latency p50 **0.17 s**, p95 **1.17 s** on an AMD Strix Halo iGPU, x2 self-hosted adjustment applied |
-| **Cost** | **42.4 / 100** | 597 input tokens/decision x assumed $0.14/M hosted list price = $0.083/1k decisions (at $0.05/M the axis would be 55.8) |
+| axis | meticulous | intuit | how it is measured |
+|---|---:|---:|---|
+| **Intelligence** | 60.3 | **61.1** | chance-corrected tier accuracy, weights easy .14 / standard .28 / hard .30 (renormalized — the judge tier is sealed); from public accuracy 0.710 / 0.714, 95% CI **±5.9pt** (n=231) |
+| **Calibration** | **90.1** | 76.1 | from top-label ECE 0.0496 / 0.1196 across all 231 answers (ECE half only; the benchmark also averages a private gold-distribution half) |
+| **Speed** | 81.1 | 81.0 | measured server latency p50 **0.17 s**, p95 **1.2 s** on an AMD Strix Halo iGPU, x2 self-hosted adjustment applied |
+| **Cost** | 42.4 | 42.3 | 597 input tokens/decision x assumed $0.14/M hosted list price = $0.083/1k decisions (at $0.05/M the axis would be 55.8) |
 
 Composite = equal-weight harmonic mean of the four axes (x the
-`(Intelligence/50)^2` gate for I<50 — kapteeni-v1 clears it at 60.3).
+`(Intelligence/50)^2` gate for I<50 — both variants clear it).
 
 ### Reading the numbers honestly
 
-- **Neighbor gaps are ties.** With n=231 items, one item is 0.43 accuracy
-  points and the 95% CI on our public accuracy is ±5.9pt. Differences of a
-  few composite points among the 60–66 band (us, Jev, JevK5) are within
-  run-to-run variance and axis assumptions; "~#2" is cosmetic, not a claim
-  that we beat JevK5 or lose to classifier.dev on the merits.
-- **We measured our own noise floor.** v1 and the rejected soup (v1.1)
-  differ only by training seed and val-fitted constants; they scored 65.71
-  vs 63.09 — ~2.6 composite points of pipeline-level variability from a
-  single seed change (partly the soup mechanism, partly noise). Any
-  claimed improvement smaller than that is not evidence.
-- **Robust claims:** v1 ≫ v0.1 (17pt composite gap), best open rebuild on
-  the measurable half, and Jev's like-for-like public accuracy is still
-  significantly ahead (0.866 ± 4.4pt vs our 0.710 ± 5.9pt — the gap
-  survives both CIs). Everything finer-grained is assumptions and noise.
+- **Sample size first.** With n=231 items, one item is 0.43 accuracy
+  points and the 95% CI on public accuracy is ±5.9pt. Differences of a
+  few composite points between the variants (and between any systems on
+  this benchmark) are within run-to-run variance and axis assumptions.
+- **We measured our own noise floor.** Two of our models differing only
+  by training seed and val-fitted constants scored 65.71 vs 63.09 —
+  ~2.6 composite points of pipeline-level variability (partly the soup
+  mechanism, partly noise). Any claimed improvement smaller than that is
+  not evidence.
+- **Robust claims:** v1 ≫ v0.1 (17-point composite gap, far outside
+  noise); -intuit ≫ -meticulous on the skills slice (0.814 vs 0.659 on
+  609 items, ~20σ); -meticulous ≫ -intuit on bench ECE (0.05 vs 0.12,
+  beyond single-run resolution). Everything finer-grained is assumptions
+  and noise.
 
 ### Per-tier accuracy (231 items)
 
-| tier | n | accuracy |
-|---|---:|---:|
-| easy | 48 | **1.000** |
-| standard | 72 | **0.889** |
-| hard | 111 | **0.469** |
-| pooled | 231 | **0.710** |
+| tier | n | meticulous | intuit |
+|---|---:|---:|---:|
+| easy | 48 | 1.000 | 1.000 |
+| standard | 72 | 0.889 | 0.903 |
+| hard | 111 | 0.469 | 0.468 |
+| pooled | 231 | 0.710 | 0.714 |
 
-### Per-family accuracy (public items)
+### Per-family accuracy (public items — v1-meticulous)
 
 | family | n | acc | | family | n | acc |
 |---|---:|---:|---|---|---:|---:|
@@ -112,6 +104,12 @@ Composite = equal-weight harmonic mean of the four axes (x the
 | adversarial | 6 | 1.000 | | judge_hard | 17 | 0.706 |
 | trap | 8 | 0.875 | | routing_hard | 5 | 1.000 |
 
+(The -intuit variant was developed precisely for the weak families above;
+on its 609-item held-out skills slice it reaches temporal_numeric 0.811 /
+multi_hop 0.917 / long_policy 0.644 — see docs/JEVBENCH.md. It was not run
+family-by-family on the public items; only its tier accuracies above are
+public-half measured.)
+
 Biggest gains vs v0.1 (pre-LoRA): ordinal 0.25 → **1.00**, routing 0.25 →
 0.75, trap 0.25 → 0.88, policy 0.67 → 0.92, intent 0.63 → 0.96,
 judge_hard 0.47 → 0.71. One honest negative: the synthetic temporal/numeric
@@ -123,21 +121,26 @@ paraphrase consistency: 0.861.
 ### Methodology & caveats (read this)
 
 - **Self-reported public-half run** (the benchmark's 146 judge-tier items and
-  308 sealed items are private). Not an official rank. Raw per-item outputs:
-  `docs/bench/kapteeni-v1-record-231.jsonl`; v0.1's run is preserved alongside.
-- **All serving constants for v1 are pre-registered**: head temperatures and
-  blend weights fitted on our own mixed-domain validation set (BoolQ/FEVER/
-  MNLI/Banking77/HelpSteer2 val slices) through the final merged model — no
-  benchmark selection anywhere in the v1 chain.
-- **Jev's accuracy on the same public items is still higher** (0.866 vs our
-  0.710): our Intelligence is renormalized over three public tiers because the
-  judge tier is sealed, while Jev's official figure blends it at weight 0.28.
-  Like-for-like, Jev's Intelligence would exceed ours; our composite edge comes
-  from Calibration (90 vs 76) and the Cost/Speed axes. Honest headline: best
-  open rebuild, competitive with Jev on what is measurable — not proven ahead.
-- Calibration is the ECE half only (the board also averages private
+  308 sealed items are private). Not an official rank, and this repo makes
+  no leaderboard or placement claims. Raw per-item outputs:
+  `docs/bench/kapteeni-v1-record-231.jsonl` (and the v0.1 / v1.1 / v1.2 /
+  v1.2.1 records alongside).
+- **All serving constants are pre-registered**: head temperatures and blend
+  weights for -meticulous fitted on our own mixed-domain validation set
+  (BoolQ/FEVER/MNLI/Banking77/HelpSteer2 val slices) through the final
+  merged model; for -intuit fitted on the deployment-diverse val set
+  (mixed-domain + synth2 val) per docs/PREREG-V1.2.1.md. No benchmark
+  selection anywhere in either chain; each variant was run on the
+  benchmark exactly once.
+- **Intelligence is renormalized** over the three public tiers because the
+  judge tier is sealed; the benchmark's official Intelligence folds in the
+  sealed+judge weight and is not comparable to ours.
+- Calibration is the ECE half only (the benchmark also averages private
   gold-distribution fidelity); Cost rests on the stated $/M assumption;
   the sealed set rotates and a sealed measurement could differ.
+- The benchmark updated to v1.4.2 during development (new systems measured;
+  item set, sealed set, and composite formula unchanged) — our runs of
+  record remain valid as scored.
 
 Full details: `docs/JEVBENCH.md` (includes the v0 → v0.1 → v1 progression and
 every fix along the way); calibration report: `docs/EVAL.md`.
@@ -176,22 +179,33 @@ every fix along the way); calibration report: `docs/EVAL.md`.
 
 ```bash
 cd kapteeni
-python3 -m pytest                          # 62+ tests, mock model, no GPU needed
+python3 -m pytest                          # 90+ tests, mock model, no GPU needed
 
-# serve the released model (from Hugging Face, or a local distribution pack)
-python3 -m kapteeni.serve --hf <user>/kapteeni-v1 --port 8000
-python3 -m kapteeni.serve --dist ./kapteeni-v1-dist --port 8000
+# serve a variant (from Hugging Face, or a local distribution pack)
+python3 -m kapteeni.serve --hf <user>/kapteeni-v1-meticulous --port 8000
+python3 -m kapteeni.serve --dist ./kapteeni-v1-meticulous-dist --port 8000
+python3 -m kapteeni.serve --dist ./kapteeni-v1-intuit-dist --port 8000
 
 # or from local training artifacts
 python3 -m kapteeni.serve --bundle model_cache/kapteeni_v1.pt \
-    --lora model_cache/kapteeni_p2/adapter --port 8000
+    --lora model_cache/kapteeni_p2/adapter --served-as kapteeni-v1-meticulous --port 8000
+python3 -m kapteeni.serve --bundle model_cache/kapteeni_v1_2_1.pt \
+    --lora model_cache/kapteeni_p2_s3/adapter --fit data_cache/phase1/fit_kv_v1_2_1.json \
+    --served-as kapteeni-v1-intuit --port 8001
 
 curl localhost:8000/v1/systemone -d '{"state":"...","model":"jev-latest","questions":{...}}'
 ```
 
-Prebuilt distribution packs (merged model, heads, serving constants, model
-card — built with `python3 -m kapteeni.pack`) run without any local training
-artifacts. Publishing one to Hugging Face: `docs/PUBLISH-HF.md`.
+`model` names accepted in requests: `jev-latest` (alias, wire compat),
+`kapteeni-v1` (legacy name for -meticulous), `kapteeni-v1-meticulous`,
+`kapteeni-v1-intuit` — any of them routes to whatever variant the server
+was launched with, matching the reference's alias behavior. The response's
+`model` field always reports the served variant's real name.
+
+Prebuilt distribution packs (merged model, heads, serving constants,
+variant-specific model card — built with `python3 -m kapteeni.pack
+--served-as ...`) run without any local training artifacts. Publishing
+them to Hugging Face: `docs/PUBLISH-HF.md`.
 
 ## Retrain from scratch
 
@@ -205,7 +219,7 @@ python3 -m kapteeni.backbone --passes ... --out data_cache/emb.pt
 python3 -m kapteeni.train --emb data_cache/emb.pt --out model_cache/kapteeni_v0.pt
 python3 -m kapteeni.train_p2 --passes ... --out model_cache/kapteeni_p2   # LoRA + heads
 python3 -m kapteeni.p2_finalize                 # temps + blend, emits servable bundle
-python3 -m kapteeni.pack --out ../kapteeni-v1-dist
+python3 -m kapteeni.pack --served-as kapteeni-v1-meticulous   # -> ../kapteeni-v1-meticulous-dist
 ```
 
 ## Design decisions worth knowing

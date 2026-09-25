@@ -19,7 +19,7 @@ from http.server import ThreadingHTTPServer
 @pytest.fixture(scope="module")
 def server():
     model = pytest.importorskip("kapteeni.mock").MockModel()
-    httpd = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(model, None))
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(model, None, "kapteeni-v1"))
     port = httpd.server_address[1]
     t = threading.Thread(target=httpd.serve_forever, daemon=True)
     t.start()
@@ -135,7 +135,7 @@ def test_404_unknown_route(server):
 def test_401_without_key(server, monkeypatch):
     # server fixture runs without a key; spin one WITH a key
     from kapteeni.mock import MockModel
-    httpd = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(MockModel(), "sekrit"))
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(MockModel(), "sekrit", "kapteeni-v1-meticulous"))
     port = httpd.server_address[1]
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     try:
