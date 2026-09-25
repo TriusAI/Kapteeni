@@ -160,6 +160,44 @@ methodology than v0.1's flagged w=0.25).
 The v0.1 record (48.21) and its raw run remain in `docs/bench/` alongside
 the kapteeni-v1 raw run.
 
+## v1.1 (three-seed soup): score 63.09 — a negative result, kept honest
+
+Pre-registered (docs/PREREG-V1.1-V1.2.md) before the run: average three
+seeds of the exact v1 recipe (seeds 1-2 retrained at budget 8192, both
+clearing the MNLI gate: 0.900 / 0.887 vs v1's 0.893), elementwise over
+merged weights, refit constants on mixed-val. The mixed-val gates all
+PASSED — per-primitive temps-stage ECE improved (noul 0.0574 -> 0.0542,
+choice 0.0731 -> 0.0639, score 0.0872 -> 0.0646), so the run was spent.
+
+The public half disagreed, hard:
+
+| | v1 (seed 0) | v1.1 (soup) |
+|---|---:|---:|
+| easy / standard / hard | 1.000 / 0.889 / 0.469 | 1.000 / 0.875 / 0.451 |
+| public accuracy | 0.710 | 0.697 |
+| Intelligence | 60.3 | 58.4 |
+| top-label ECE -> Calibration | 0.0496 -> 90.1 | 0.1046 -> 79.1 |
+| Speed / Cost | 81.1 / 42.4 | 81.0 / 42.3 |
+| **score / slot** | **65.71 / ~#2** | **63.09 / ~#3** |
+
+In-domain calibration improved; out-of-domain calibration collapsed
+(top-label ECE doubled). The val-fit blend constants for the soup leaned
+much harder on the verbalizer (choice w 0.1 -> 0.3, tau 2 -> 8; score
+w 0.4 -> 0.7) — optimal on the mixed-domain val slices, fragile off them.
+Averaging three runs also plausibly lands the model between loss basins in
+a way that shifts the verbalizer's OOD behavior, which the head-side fit
+cannot see.
+
+What this result buys us: (a) ensembling is disqualified for this
+model+data until the OOD mechanism is understood — v1.2's candidate is the
+weak-family continuation alone, per the amendment in the pre-reg; (b) the
+val-fit-constants methodology now has a demonstrated failure mode, which
+the README's caveats mention; (c) the discipline held — no post-hoc
+constant search was run against the bench to "fix" the soup. Raw run:
+`docs/bench/kapteeni-v1.1-record-231.jsonl`; summary:
+`data_cache/bench_v1_1/summary.json`. Soup weights kept in
+`model_cache/kapteeni_soup/` for reproduction.
+
 ## Run of record (2026-09-24, post double-softmax fix): score 48.2, ~#8/73
 
 The Phase-1 blend had a serving bug: `_answer()` passed blend PROBABILITIES

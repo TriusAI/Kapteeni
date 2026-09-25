@@ -92,6 +92,13 @@ soup: no double-descent on replayed data, and it keeps v1.1 interpretable.
 - Candidates: seed 3 alone, and the 4-seed soup {0,1,2,3}. Pick the best
   mixed-val + family-val; only the winner gets the public-half run.
 
+**Amendment (2026-09-25, after v1.1's completed run, before any v1.2 run):**
+v1.1 showed the soup's val-fitted constants are OOD-fragile (mixed-val ECE
+improved everywhere while bench ECE doubled; 63.09 vs v1's 65.71). The
+4-seed-soup candidate is therefore dropped. v1.2's candidate is **seed 3
+alone**, judged on the same gates; the comparison stays against v1 (the
+shipped model), and one public-half run is spent only if the gates pass.
+
 **Gates.** MNLI OOD ≥ 0.88 during seed 3; English flagship: if the
 public-half composite drops more than 1.0 below v1's, that is reported
 honestly and v1 stays the headline.

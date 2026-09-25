@@ -113,7 +113,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     with torch.no_grad():
         for k, t in ref.items():
-            t.copy_((acc[k] / n).to(t.dtype, t.device))
+            t.copy_((acc[k] / n).to(dtype=t.dtype, device=t.device))
     model.save_pretrained(str(out), safe_serialization=True)
     tok.save_pretrained(str(out))
     print(f"wrote soup of {n} seeds -> {out}")

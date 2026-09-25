@@ -179,3 +179,25 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   model_cache/kapteeni_p2/adapter --port 8000.
 - Seeds auto-chain overnight (scripts/chain_seed2.sh: seed 2 launches on
   seed 1's success marker, gives up cleanly on crash).
+
+## 2026-09-25 (evening) — v1.1 soup: NEGATIVE result, documented honestly
+
+- Seeds 1+2 trained clean on the exact v1 recipe (budget 8192; 1205 steps
+  each; final MNLI gates 0.900 / 0.887, both clear the 0.88 bar).
+- Soup (soup.py, .to() arg bug found and fixed on first run): mixed-val
+  gates ALL PASSED (per-primitive temps ECE improved vs v1), so the one
+  pre-registered public-half run was spent.
+- Result: 63.09 vs v1's 65.71 (~#3 vs ~#2). Accuracy −1.3pt, top-label
+  ECE doubled (0.0496 -> 0.1046). In-domain val said better; the bench
+  (OOD) disagreed — the soup's val-fit blend constants (choice w 0.3/tau 8
+  vs v1's 0.1/2; score w 0.7 vs 0.4) were in-domain optimal, OOD fragile.
+- Actions per pre-reg: v1 stays the shipped headline; no re-runs, no
+  post-hoc constant search against the bench; soup row added to
+  docs/JEVBENCH.md + README note; raw run preserved
+  (docs/bench/kapteeni-v1.1-record-231.jsonl); soup weights kept in
+  model_cache/kapteeni_soup/ for reproduction.
+- Pre-reg amendment (dated, before any v1.2 run): v1.2's candidate is
+  seed 3 ALONE (the 4-seed soup candidate is dropped given the v1.1
+  evidence).
+- v1.2 seed 3 launched overnight: fresh run on the union
+  passes_p2.jsonl + passes_synth2.jsonl (~11.3M tokens), budget 8192.

@@ -35,6 +35,12 @@ resold. On the composite as computable from the public half, kapteeni-v1 is
 the **best open rebuild on the board by a wide margin**, and competitive with
 Jev itself. (Asterisks below.)
 
+*A pre-registered follow-up experiment — a three-seed model soup of the v1
+recipe — scored 63.09 (vs v1's 65.71) and is documented as a negative result:
+mixed-val calibration improved while out-of-domain calibration collapsed.
+Ensembling is disqualified for this model+data; v1 remains the shipped
+headline. Full analysis in `docs/JEVBENCH.md`.*
+
 ### The four axes (official formulas)
 
 | axis | value | how it is measured |
