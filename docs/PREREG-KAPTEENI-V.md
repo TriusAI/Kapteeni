@@ -71,3 +71,26 @@ numbers only, no leaderboard claims anywhere.
 No training or constant selection on any benchmark's items (including
 imajev-bench); no gates adjusted after results; text non-regression is
 a hard gate, not a preference.
+
+## V0 OUTCOME (2026-09-27) — PASSED
+
+Frozen Qwen3-VL-4B-Instruct (zero training), lettered LM-head readout,
+one pass per question, 27-item probe:
+
+| family | accuracy |
+|---|---:|
+| menu_board | 11/12 = 0.917 |
+| calendar_card | 3/6 = 0.500 |
+| form_sheet | 7/9 = 0.778 |
+| **overall** | **21/27 = 0.778 >= 0.70 gate** |
+
+Deterministic across two runs (bit-identical probability vectors).
+Findings: price reading and threshold comparisons are near-perfect
+(noul on menus 6/6, several at conf ~1.0); the calendar family's
+"which week" choices fail 0/3 at HIGH confidence (0.81-0.95) — a
+layout-counting weakness, precisely the kind of skill that
+ground-truth-by-construction training data teaches, and a signal that
+the frozen backbone's confidence is NOT calibrated where it is wrong
+(the Kapteeni-V differentiator in one sentence).
+
+Report: `data_cache/vprobe/report.json`. The track proceeds to V1.

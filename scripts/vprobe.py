@@ -31,13 +31,13 @@ LETTERS = "ABCDEFGH"
 
 def letter_token_ids(tok):
     """Ids for ' A', ' B', ... (the tokens written right after 'answer:')."""
-    return [tok(" " + L, add_special_tokens=False)["input_ids"][0]
+    return [tok.tokenizer(" " + L, add_special_tokens=False)["input_ids"][0]
             for L in LETTERS]
 
 
 def yes_no_token_ids(tok):
-    return (tok("yes", add_special_tokens=False)["input_ids"][0],
-            tok("no", add_special_tokens=False)["input_ids"][0])
+    return (tok.tokenizer("yes", add_special_tokens=False)["input_ids"][0],
+            tok.tokenizer("no", add_special_tokens=False)["input_ids"][0])
 
 
 def build_prompt(row) -> str:
@@ -58,7 +58,15 @@ def build_prompt(row) -> str:
 @torch.no_grad()
 def readout(model, proc, tok, row, img_path, device):
     prompt = build_prompt(row)
-    inputs = proc(text=[prompt], images=[img_path], return_tensors="pt")
+    # the chat template inserts the vision placeholder tokens into the
+    # text; the raw text= API does not (transformers 5.15)
+    messages = [{"role": "user", "content": [
+        {"type": "image", "image": img_path},
+        {"type": "text", "text": prompt},
+    ]}]
+    inputs = proc.apply_chat_template(messages, add_generation_prompt=True,
+                                      tokenize=True, return_dict=True,
+                                      return_tensors="pt")
     inputs = {k: v.to(device) for k, v in inputs.items()}
     logits = model(**inputs).logits[0, -1, :]
     if row["primitive"] == "noul":
