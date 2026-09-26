@@ -191,7 +191,7 @@ cd kapteeni
 python3 -m pytest                          # 90+ tests, mock model, no GPU needed
 
 # serve a variant (from Hugging Face, or a local distribution pack)
-python3 -m kapteeni.serve --hf <user>/kapteeni-v1-meticulous --port 8000
+python3 -m kapteeni.serve --hf TriusAI/kapteeni-v1-meticulous --port 8000
 python3 -m kapteeni.serve --dist ./kapteeni-v1-meticulous-dist --port 8000
 python3 -m kapteeni.serve --dist ./kapteeni-v1-intuit-dist --port 8000
 
@@ -213,8 +213,10 @@ was launched with, matching the reference's alias behavior. The response's
 
 Prebuilt distribution packs (merged model, heads, serving constants,
 variant-specific model card — built with `python3 -m kapteeni.pack
---served-as ...`) run without any local training artifacts. Publishing
-them to Hugging Face: `docs/PUBLISH-HF.md`.
+--served-as ...`) run without any local training artifacts. Both are
+published: [huggingface.co/TriusAI/kapteeni-v1-meticulous](https://huggingface.co/TriusAI/kapteeni-v1-meticulous)
+and [huggingface.co/TriusAI/kapteeni-v1-intuit](https://huggingface.co/TriusAI/kapteeni-v1-intuit).
+The publishing workflow lives in `docs/PUBLISH-HF.md`.
 
 ## Retrain from scratch
 

@@ -87,7 +87,7 @@ load).
 
 ```bash
 cd /path/to/kapteeni-v1-meticulous-dist
-huggingface-cli upload <your-user>/kapteeni-v1-meticulous . . \
+huggingface-cli upload TriusAI/kapteeni-v1-meticulous . . \
     --repo-type model --commit-message "Kapteeni v1 meticulous"
 # likewise for the intuit pack
 ```
@@ -101,8 +101,8 @@ python3 - <<'EOF'
 from huggingface_hub import HfApi
 api = HfApi()
 for variant in ("kapteeni-v1-meticulous", "kapteeni-v1-intuit"):
-    api.create_repo(repo_id=f"<your-user>/{variant}", exist_ok=True)
-    api.upload_large_folder(repo_id=f"<your-user>/{variant}",
+    api.create_repo(repo_id=f"TriusAI/{variant}", exist_ok=True)
+    api.upload_large_folder(repo_id=f"TriusAI/{variant}",
                             repo_type="model",
                             folder_path=f"kapteeni-v1-{variant.split('-')[-1]}-dist")
 EOF
@@ -111,8 +111,8 @@ EOF
 ## 4. How users run them after download
 
 ```bash
-python -m kapteeni.serve --hf <your-user>/kapteeni-v1-meticulous --port 8000
-python -m kapteeni.serve --hf <your-user>/kapteeni-v1-intuit --port 8000
+python -m kapteeni.serve --hf TriusAI/kapteeni-v1-meticulous --port 8000
+python -m kapteeni.serve --hf TriusAI/kapteeni-v1-intuit --port 8000
 ```
 
 Requirements: `torch`, `transformers`, `safetensors`, `huggingface_hub`.

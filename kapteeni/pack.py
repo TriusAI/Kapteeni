@@ -84,8 +84,10 @@ m = SystemOneModel.from_dist("<snapshot dir>")
 answers, usage = m.evaluate(state, questions)
 ```
 
-The `kapteeni/` Python package is included in this snapshot; the full repo
-(data pipeline, training, tests) lives on GitHub.
+The `kapteeni/` Python package is included in this snapshot; the full
+repository (data pipeline, training, tests, benchmark history and
+pre-registrations) lives at https://github.com/TriusAI/Kapteeni
+(Apache-2.0).
 
 ## Question types (the Jev contract)
 
@@ -162,9 +164,11 @@ _VARIANT_TEXT = {
             "**This variant: kapteeni-v1-meticulous** — conservative "
             "confidence. The safe default for unknown or messy traffic.\n\n"
             "Kapteeni v1 ships as two variants of the same architecture. "
-            "The other, kapteeni-v1-intuit, decides more accurately on "
-            "well-formed numeric, temporal, and multi-step policy traffic "
-            "but is less careful about its confidence there."
+            "The other, "
+            "[kapteeni-v1-intuit](https://huggingface.co/TriusAI/kapteeni-v1-intuit), "
+            "decides more accurately on well-formed numeric, temporal, "
+            "and multi-step policy traffic but is less careful about its "
+            "confidence there."
         ),
         "bench": (
             "| JevBench-style score | Intelligence | top-label ECE | public accuracy |\n"
@@ -197,8 +201,10 @@ _VARIANT_TEXT = {
             "policy traffic (measured skills-slice accuracy 0.81 vs 0.66 "
             "for -meticulous, with better calibration on that slice).\n\n"
             "Kapteeni v1 ships as two variants of the same architecture. "
-            "The other, kapteeni-v1-meticulous, is the conservative-"
-            "confidence default for unknown or messy traffic."
+            "The other, "
+            "[kapteeni-v1-meticulous](https://huggingface.co/TriusAI/kapteeni-v1-meticulous), "
+            "is the conservative-confidence default for unknown or messy "
+            "traffic."
         ),
         "bench": (
             "| JevBench-style score | Intelligence | top-label ECE | public accuracy |\n"
