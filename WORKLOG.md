@@ -338,3 +338,17 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   non-interactive use).
 - Issue body staged at /tmp/opencode/bench-request-body.md; gh CLI is
   authenticated (bctnry) and the API is reachable via proxy 10081.
+
+## 2026-09-26 (final) — bench request POSTED: fstandhartinger/jevbench#102
+
+- https://github.com/fstandhartinger/jevbench/issues/102 — open, under
+  bctnry, body verified byte-identical to docs/BENCH-REQUEST.md (7,376
+  chars; all pinned revisions and numbers present).
+- Posting required a classic PAT (fine-grained PATs cannot create issues
+  in third-party repos regardless of permission toggles — documented the
+  finding when it failed twice).
+- The request pins: HF TriusAI/kapteeni-v1-meticulous @ 8c1abcf and
+  TriusAI/kapteeni-v1-intuit @ 6466d70 (verified current, refreshed cards
+  included), code at tag bench-request-v1 (7d365aa). Sealed-half
+  evaluation now possible via their offline-container process if
+  accepted.
