@@ -1,0 +1,9 @@
+{
+  "shingle_width_words": 8,
+  "normalization": "lowercase alnum word sequences",
+  "bench_items": 231,
+  "training_rows": 18457,
+  "items_with_hits": 0,
+  "total_shingle_hits": 0,
+  "hits": {}
+}
