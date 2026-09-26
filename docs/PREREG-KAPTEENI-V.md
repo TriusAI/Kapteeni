@@ -55,6 +55,20 @@ implements it for text).
   backbone; **text non-regression** (mixed-val and synth2-val within
   noise of the shipped text variants' numbers; the MNLI text gate still
   >= 0.88) — a visual Kapteeni may not be dumber about text.
+
+**Amendment (2026-09-27, before any V2 measurement).** The V0 probe
+passed at 77.8% with the **one-pass lettered LM-head readout** (no
+heads, no training), and Visual Jev's published matched control found
+typed heads offer no consistent accuracy advantage over the LM-head
+readout on visual tasks. Per-option passes would also repeat each
+~400-token image per option (4-5x the training compute for no expected
+gain). V2's readout is therefore fixed as: **one pass per question,
+options as a letter list, answer-token supervision (yes/no for noul,
+letter for choice/score) through the LM head, per-primitive temperature
+scaling fit on held-out val.** Typed heads are deferred to a control
+experiment only if the primary run underperforms its gates. The text
+replay uses the same lettered format so the VL model's text-decision
+behavior is measurable in its own readout.
 - **V3 — constants + serving.** Temps + blend fit on
   **deployment-diverse val from day one** (image val + text mixed val +
   synth2 val — the v1.2.1 lesson applied in advance); shared image-prefix
