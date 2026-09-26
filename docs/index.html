@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Kapteeni — a Jev-compatible System One decision model</title>
+    <meta name="description" content="Kapteeni reads a state and typed questions and returns calibrated probability distributions. Reference implementation of the TypeSafe System One wire format on a frozen Qwen3-4B backbone.">
+    <link rel="icon" href="assets/trius-mark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <div class="page">
+
+      <header class="masthead">
+        <div class="masthead-row">
+          <span class="mh-left">KAPTEENI</span>
+          <span class="mh-center">a system one decision model</span>
+          <span class="mh-right">Operating manual — MMXXVI</span>
+        </div>
+        <nav class="site-nav" aria-label="Manual">
+          <a href="index.html" aria-current="page">Overview</a>
+          <a href="api.html">Wire API</a>
+          <a href="bench.html">Benchmarks</a>
+          <span class="nav-right"><a href="https://triusai.github.io/">TriusAI</a> · <a href="https://github.com/TriusAI/Kapteeni">Repository</a></span>
+        </nav>
+      </header>
+
+      <main>
+        <section class="feature">
+          <p class="kicker">Fig. 1 — A Jev-compatible System One decision model</p>
+          <h1>Kapteeni</h1>
+          <p class="lede">Kapteeni reads a <code>state</code> and typed questions, and
+            returns <em>calibrated probability distributions your code can branch
+            on</em>. It generates no text. The reference behavior is the TypeSafe
+            System One API (<a href="https://docs.typesafe.ai">Jev</a>); Kapteeni
+            reimplements it end-to-end on local hardware — a frozen
+            Qwen3-4B-Instruct-2507 backbone with trained readout heads.</p>
+          <p class="body-copy">Status: v1 is trained, evaluated, and served as two
+            variants — <em>kapteeni-v1-meticulous</em> (the default; conservative
+            confidence for unknown traffic) and <em>kapteeni-v1-intuit</em> (sharper
+            decisions on well-formed numeric, temporal, and multi-step traffic).
+            Both are published on Hugging Face under
+            <a href="https://huggingface.co/TriusAI">TriusAI</a>. Every benchmark
+            number in this manual is a self-reported public-half measurement; see
+            <a href="bench.html">Benchmarks</a>.</p>
+        </section>
+
+        <img class="ramp" src="assets/ramp.png" alt="" aria-hidden="true">
+
+        <section class="doc-section" id="pipeline">
+          <h2><span class="sec-no">&#167;&#8202;1</span>Pipeline</h2>
+          <figure class="figure">
+            <pre><code>state + questions ──▶ serialize ──▶ Qwen3-4B (LoRA-adapted) ──▶ h_last per pass
+                                      (one pass per question/option/level)
+                 ──▶ readout heads + verbalizer blend ──▶ temperature ──▶ contract shaping
+                 ──▶ {answers: typed + probabilities + confidence, usage}</code></pre>
+            <figcaption>One forward pass per question, option, or level; passes are
+              content-only, so question ids never reach the model and
+              adding or removing a question never changes another answer
+              (test E1).</figcaption>
+          </figure>
+        </section>
+
+        <section class="doc-section" id="variants">
+          <h2><span class="sec-no">&#167;&#8202;2</span>The two shipped variants</h2>
+          <p>Both variants share one architecture and one wire format; they differ
+            in training data and serving constants, and are good at different
+            things.</p>
+          <div class="table-scroll">
+            <table class="data">
+              <thead>
+                <tr><th></th><th class="num">v1-meticulous</th><th class="num">v1-intuit</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>JevBench-style score (public half)</td><td class="num"><strong>65.71</strong></td><td class="num">63.18</td></tr>
+                <tr><td>Intelligence</td><td class="num">60.3</td><td class="num"><strong>61.1</strong></td></tr>
+                <tr><td>top-label ECE &#8594; Calibration</td><td class="num"><strong>0.0496 &#8594; 90.1</strong></td><td class="num">0.1196 &#8594; 76.1</td></tr>
+                <tr><td>public accuracy (easy / standard / hard)</td><td class="num">0.710 (1.000 / 0.889 / 0.469)</td><td class="num"><strong>0.714</strong> (1.000 / 0.903 / 0.468)</td></tr>
+                <tr><td>skills-slice accuracy (609 held-out items: temporal / multi-hop / policy)</td><td class="num">0.659</td><td class="num"><strong>0.814</strong></td></tr>
+                <tr><td>skills-slice ECE</td><td class="num">0.063</td><td class="num"><strong>0.043</strong></td></tr>
+                <tr><td>use when</td><td>traffic is unknown, messy, adversarial; confidence values are consumed downstream</td><td>traffic is well-formed (documents, policies, SLAs, forms) and needs numeric, temporal, or multi-step judgment</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="note">The negative-result trail behind this split: a
+            three-seed model soup (63.09), a weak-family continuation (59.65),
+            and a constants refit (63.18 — the intuit variant) were each
+            pre-registered and run once. All three improved measured val metrics
+            while degrading benchmark calibration; the shared mechanism — serving
+            constants fitted on narrow validation are OOD-fragile — is documented
+            in <a href="https://github.com/TriusAI/Kapteeni/blob/main/docs/JEVBENCH.md">JEVBENCH.md</a>.
+            Rather than discard the best-deciding artifacts, they ship as
+            -intuit with honest guidance about when to prefer them.</p>
+        </section>
+
+        <section class="doc-section" id="replicated">
+          <h2><span class="sec-no">&#167;&#8202;3</span>What is replicated</h2>
+          <div class="table-scroll">
+            <table class="data">
+              <thead>
+                <tr><th>Aspect</th><th>Reference behavior</th><th>Kapteeni</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>API</td><td><code>POST /v1/systemone</code>, <code>GET /v1/models</code></td><td>same wire format; docs' examples run unchanged (E11)</td></tr>
+                <tr><td>Noul</td><td>absolute P(true) &#8712; [0,1]; no confidence field</td><td>sigmoid head, BCE on teacher soft labels — <strong>absolute</strong> (E5: P(A)+P(&#172;A) &#8800; 1)</td></tr>
+                <tr><td>Choice</td><td>relative: probabilities sum to exactly 1</td><td>per-option scores, softmax over the group, exact-1 decimal sum</td></tr>
+                <tr><td>Score</td><td>independent levels; score = expectation (can be fractional)</td><td>per-level BCE head, normalized at the API layer; legend echoes levels</td></tr>
+                <tr><td>Confidence</td><td>derived from distribution shape</td><td>1 &#8722; H(p)/ln K, floored (<strong>documented divergence</strong>: the reference's formula is not public)</td></tr>
+                <tr><td>Calibration</td><td>"P=0.2 events fire &#8776;20% of the time"</td><td>temperature scaling per head; ECE/Brier measured on val + held-out datasets (E2)</td></tr>
+                <tr><td>Independence</td><td>adding/removing questions never changes others</td><td>structural: passes are content-only, question ids never serialized (E1)</td></tr>
+                <tr><td>Determinism</td><td>reference shows run-to-run std &#8776; 0.01</td><td><strong>fully deterministic</strong> (documented improvement; ensemble noise is a future flag)</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="doc-section" id="design">
+          <h2><span class="sec-no">&#167;&#8202;4</span>Design decisions</h2>
+          <ol>
+            <li><strong>Noul is trained absolute</strong> — a single sigmoid against
+              soft targets, never a yes/no softmax pair. A complement-consistent
+              Noul would be exactly the bug the reference's numbers
+              (0.72 + 0.47 = 1.19) rule out; a test asserts non-identity.</li>
+            <li><strong>Choice softmax happens over the row's option group
+              in-loss</strong> so gradients shape relative separation; at the API
+              layer the distribution is rounded to 4 decimals with the argmax
+              repaired so the decimal sum is exactly 1 (matching the reference's
+              published examples).</li>
+            <li><strong>Score levels are judged independently</strong> (per-level
+              BCE, "does the state match this level?"), normalized only at the API
+              layer — this reproduces the reference's documented "numbers-only
+              levels fail" asymmetry by construction.</li>
+            <li><strong>Soft labels from teacher k-sample agreement</strong> (mean
+              of k judge calls, weight = 1 &#8722; std). Ambiguous rows are kept and
+              down-weighted: the calibration band is learned <em>from</em>
+              disagreement.</li>
+            <li><strong>Deterministic row splits</strong> by
+              <code>sha256(row_id) % 10</code> — the same rule in expansion,
+              distillation, and training, so val rows never leak into train
+              passes, and the distiller never labels val rows.</li>
+            <li><strong>No chat template</strong> — passes are plain text; behavior
+              is template-independent and fully deterministic.</li>
+          </ol>
+        </section>
+
+        <section class="doc-section" id="quickstart">
+          <h2><span class="sec-no">&#167;&#8202;5</span>Quickstart</h2>
+          <pre><code>cd kapteeni
+python3 -m pytest                          # 90+ tests, mock model, no GPU needed
+
+# serve a variant (from Hugging Face, or a local distribution pack)
+python3 -m kapteeni.serve --hf TriusAI/kapteeni-v1-meticulous --port 8000
+python3 -m kapteeni.serve --hf TriusAI/kapteeni-v1-intuit --port 8000
+python3 -m kapteeni.serve --dist ./kapteeni-v1-meticulous-dist --port 8000
+
+curl localhost:8000/v1/systemone -d '{"state":"...","model":"jev-latest","questions":{...}}'</code></pre>
+          <p>Requests may address either variant by name, by the legacy
+            <code>kapteeni-v1</code>, or by the wire-compat alias
+            <code>jev-latest</code>; responses always report the served variant's
+            real name. The full request and answer shapes are on the
+            <a href="api.html">Wire API</a> page.</p>
+        </section>
+
+        <section class="doc-section" id="layout">
+          <h2><span class="sec-no">&#167;&#8202;6</span>Repository layout</h2>
+          <ul class="modules">
+            <li><span class="mod">kapteeni/contract.py</span><span class="mod-desc">the wire format as executable code — validation, answer shaping, confidence, exact-1 probability sums</span></li>
+            <li><span class="mod">kapteeni/serialize.py</span><span class="mod-desc">pass serialization (state JSON text + <code>[noul]</code>/<code>[choice]</code>/<code>[score]</code> suffixes; ids never serialized)</span></li>
+            <li><span class="mod">kapteeni/backbone.py</span><span class="mod-desc">frozen Qwen3-4B-Instruct-2507 (bf16/ROCm), batched <code>h_last</code> precompute with resume</span></li>
+            <li><span class="mod">kapteeni/heads.py · train.py</span><span class="mod-desc">per-primitive readout heads, proper-scoring losses (BCE/CE, soft targets), per-head temperature fit</span></li>
+            <li><span class="mod">kapteeni/build_data.py · criteria.py · distill.py</span><span class="mod-desc">datasets &#8594; rows &#8594; passes; teacher-written rubrics; k-sample soft labels</span></li>
+            <li><span class="mod">kapteeni/verbalizer.py</span><span class="mod-desc">the backbone's native decision readout, blended with the trained heads</span></li>
+            <li><span class="mod">kapteeni/model.py · serve.py</span><span class="mod-desc">runtime model + stdlib HTTP server</span></li>
+            <li><span class="mod">kapteeni/committee.py</span><span class="mod-desc">output-averaging of two served variants (<code>kapteeni-v1-committee</code>)</span></li>
+            <li><span class="mod">kapteeni/p2_finalize.py</span><span class="mod-desc">fits final temperatures and blend constants; emits a servable bundle</span></li>
+            <li><span class="mod">kapteeni/pack.py</span><span class="mod-desc">builds self-contained distribution packs — merged model, heads, serving constants, variant-specific model card</span></li>
+            <li><span class="mod">tests/</span><span class="mod-desc">E1 (parity), E5 (asymmetry), E6 (score semantics), E11 (schema, end-to-end over HTTP); the suites run against the mock by default and against the trained model via <code>KAPTEENI_TEST_BUNDLE=</code></span></li>
+            <li><span class="mod"><span class="dim">remaining modules</span></span><span class="mod-desc"><span class="dim">data synthesis and experiment harnesses (synth, synth2, soup, familyval, fit_diverse, evalx, report, metrics, mock, ollama) — see <a href="https://github.com/TriusAI/Kapteeni/blob/main/WORKLOG.md">WORKLOG.md</a></span></span></li>
+          </ul>
+        </section>
+
+        <section class="doc-section" id="license">
+          <h2><span class="sec-no">&#167;&#8202;7</span>License</h2>
+          <ul>
+            <li><strong>Code, docs, generators:</strong> Apache-2.0
+              (<a href="https://github.com/TriusAI/Kapteeni/blob/main/LICENSE">LICENSE</a>)
+              — matching the Apache-2.0 base model, Qwen3-4B-Instruct-2507.</li>
+            <li><strong>Trained weights from this pipeline:</strong> CC BY-SA 4.0,
+              with the full training-data provenance and attribution guidance in
+              <a href="https://github.com/TriusAI/Kapteeni/blob/main/WEIGHTS-LICENSE.md">WEIGHTS-LICENSE.md</a>
+              (the ShareAlike term comes from MultiNLI and the underlying FEVER
+              annotations).</li>
+          </ul>
+        </section>
+      </main>
+
+      <footer class="colophon">
+        <p class="colophon-rule"><span class="fleuron">&#10087;</span></p>
+        <p class="colophon-text">Kapteeni — a Jev-compatible System One decision
+          model, part of TriusAI. Records: <a href="https://github.com/TriusAI/Kapteeni/blob/main/docs/JEVBENCH.md">JEVBENCH.md</a>
+          · <a href="https://github.com/TriusAI/Kapteeni/blob/main/docs/EVAL.md">EVAL.md</a>
+          · <a href="https://github.com/TriusAI/Kapteeni/blob/main/WORKLOG.md">WORKLOG.md</a></p>
+        <p class="colophon-contact">
+          <a href="https://triusai.github.io/">TriusAI</a> ·
+          <a href="https://github.com/TriusAI/Kapteeni">GitHub</a> ·
+          <a href="https://huggingface.co/TriusAI">Hugging Face</a> ·
+          <a href="mailto:trius@canton.graphics">trius&#8202;@&#8202;canton.graphics</a>
+        </p>
+      </footer>
+
+    </div>
+  </body>
+</html>

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Kapteeni — Wire API</title>
+    <meta name="description" content="The TypeSafe System One wire format served by Kapteeni: POST /v1/systemone, GET /v1/models, the three primitives (noul, choice, score), errors, and serving flags.">
+    <link rel="icon" href="assets/trius-mark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <div class="page">
+
+      <header class="masthead">
+        <div class="masthead-row">
+          <span class="mh-left">KAPTEENI</span>
+          <span class="mh-center">a system one decision model</span>
+          <span class="mh-right">Operating manual — MMXXVI</span>
+        </div>
+        <nav class="site-nav" aria-label="Manual">
+          <a href="index.html">Overview</a>
+          <a href="api.html" aria-current="page">Wire API</a>
+          <a href="bench.html">Benchmarks</a>
+          <span class="nav-right"><a href="https://triusai.github.io/">TriusAI</a> · <a href="https://github.com/TriusAI/Kapteeni">Repository</a></span>
+        </nav>
+      </header>
+
+      <main>
+        <section class="feature">
+          <p class="kicker">Fig. 2 — The wire, as executable code</p>
+          <h1>Wire API</h1>
+          <p class="lede">Kapteeni serves the TypeSafe System One wire format.
+            Field names, bounds, and answer shapes mirror
+            docs.typesafe.ai/api; the reference's example requests run unchanged
+            against this server (test E11). The HTTP layer is Python stdlib
+            only; the format itself lives in <code>kapteeni/contract.py</code> —
+            deliberately framework-free and torch-free.</p>
+        </section>
+
+        <img class="ramp" src="assets/ramp.png" alt="" aria-hidden="true">
+
+        <section class="doc-section" id="endpoints">
+          <h2><span class="sec-no">&#167;&#8202;1</span>Endpoints &amp; authentication</h2>
+          <div class="spec">
+            <div class="spec-row">
+              <span class="spec-term">POST /v1/systemone</span>
+              <span class="spec-desc">Validate the request, evaluate every question
+                against the state, return typed answers and usage.</span>
+            </div>
+            <div class="spec-row">
+              <span class="spec-term">GET /v1/models</span>
+              <span class="spec-desc">Model cards: the <code>jev-latest</code> alias
+                plus a card for the served variant.</span>
+            </div>
+          </div>
+          <p>Authentication is optional: set <code>KAPTEENI_API_KEY</code> to require
+            a <code>Authorization: Bearer &lt;key&gt;</code> header; without it the
+            server accepts any or no key (local development).</p>
+          <div class="table-scroll">
+            <table class="data">
+              <thead>
+                <tr><th class="num">Status</th><th>Meaning</th></tr>
+              </thead>
+              <tbody>
+                <tr><td class="num">200</td><td>Evaluation succeeded; body carries <code>model</code>, <code>answers</code>, <code>usage</code>.</td></tr>
+                <tr><td class="num">401</td><td>Missing or invalid API key (only when <code>KAPTEENI_API_KEY</code> is set).</td></tr>
+                <tr><td class="num">404</td><td>No route for the path.</td></tr>
+                <tr><td class="num">422</td><td>Validation failure (including a body that is not valid JSON); the error names the field.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <pre><code>HTTP/1.1 422
+{"error": {"message": "choice criteria must be a map of at least 2 options",
+           "field": "questions.department.criteria"}}</code></pre>
+        </section>
+
+        <section class="doc-section" id="request">
+          <h2><span class="sec-no">&#167;&#8202;2</span>Request body</h2>
+          <div class="spec">
+            <div class="spec-row">
+              <span class="spec-term">state <span class="req">required</span></span>
+              <span class="spec-desc">string, object, or array. Structured states are
+                addressed from instructions with dot-paths (e.g.
+                <code>ticket.messages[0].text</code>).</span>
+            </div>
+            <div class="spec-row">
+              <span class="spec-term">model <span class="req">required</span></span>
+              <span class="spec-desc">string. Accepted names: <code>jev-latest</code>
+                (alias, wire compat), <code>kapteeni-v1</code> (legacy name for
+                -meticulous), <code>kapteeni-v1-meticulous</code>,
+                <code>kapteeni-v1-intuit</code>, <code>kapteeni-v1-committee</code>.
+                Any of them routes to the variant the server was launched with;
+                the response's <code>model</code> field always reports the served
+                variant's real name.</span>
+            </div>
+            <div class="spec-row">
+              <span class="spec-term">questions <span class="req">required</span></span>
+              <span class="spec-desc">map of question id to question; non-empty. Ids
+                must be non-empty strings. Ids never reach the model — passes are
+                content-only, so adding or removing a question never changes
+                another answer (E1).</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="doc-section" id="primitives">
+          <h2><span class="sec-no">&#167;&#8202;3</span>The three primitives</h2>
+
+          <div class="primitive" id="noul">
+            <div class="primitive-head">
+              <span class="primitive-name">noul</span>
+              <span class="primitive-shape">{type, noul}</span>
+            </div>
+            <div class="spec">
+              <div class="spec-row">
+                <span class="spec-term">instructions <span class="req">required</span></span>
+                <span class="spec-desc">string, object, or array.</span>
+              </div>
+              <div class="spec-row">
+                <span class="spec-term">criteria</span>
+                <span class="spec-desc">optional object with optional
+                  <code>true</code> / <code>false</code> descriptions (string,
+                  object, or array).</span>
+              </div>
+            </div>
+            <p>The absolute readout: <code>noul</code> is P(true) &#8712; [0,1] with
+              no renormalization and no confidence field. P(A) + P(&#172;A) &#8800; 1
+              is reference behavior, kept by construction.</p>
+            <pre><code>{"state": "Help! My payouts have been failing for 3 days.",
+ "model": "jev-latest",
+ "questions": {"is_urgent": {"type": "noul",
+                              "instructions": "Does this convey urgency?"}}}</code></pre>
+          </div>
+
+          <div class="primitive" id="choice">
+            <div class="primitive-head">
+              <span class="primitive-name">choice</span>
+              <span class="primitive-shape">{type, choice, probabilities, confidence}</span>
+            </div>
+            <div class="spec">
+              <div class="spec-row">
+                <span class="spec-term">instructions <span class="req">required</span></span>
+                <span class="spec-desc">string, object, or array.</span>
+              </div>
+              <div class="spec-row">
+                <span class="spec-term">criteria <span class="req">required</span></span>
+                <span class="spec-desc">map of 2&#8211;255 options; keys are non-empty
+                  strings, values are string, object, array, or null.</span>
+              </div>
+            </div>
+            <p>The relative readout: per-option scores are softmaxed over the full
+              option group. Probabilities are rounded to 4 decimals and the argmax
+              entry is repaired so the decimal sum is exactly 1, matching the
+              reference's published examples.</p>
+          </div>
+
+          <div class="primitive" id="score">
+            <div class="primitive-head">
+              <span class="primitive-name">score</span>
+              <span class="primitive-shape">{type, score, legend, probabilities, confidence}</span>
+            </div>
+            <div class="spec">
+              <div class="spec-row">
+                <span class="spec-term">instructions <span class="req">required</span></span>
+                <span class="spec-desc">string, object, or array.</span>
+              </div>
+              <div class="spec-row">
+                <span class="spec-term">criteria <span class="req">required</span></span>
+                <span class="spec-desc">ordered array of 2&#8211;10 level descriptions
+                  (string, object, or array).</span>
+              </div>
+            </div>
+            <p>Levels are judged independently (per-level BCE, "does the state
+              match this level?") and normalized only at the API layer.
+              <code>score</code> is the expectation
+              &#931; level_index &#215; p_level over a 0-based index — the docs'
+              example 1.05 = 0&#215;0.0 + 1&#215;0.95 + 2&#215;0.05 confirms the base.
+              <code>legend</code> and <code>probabilities</code> keys are string
+              level indices.</p>
+          </div>
+
+          <h3>One request, three primitives — response shape</h3>
+          <pre><code>{
+  "model": "kapteeni-v1-meticulous",
+  "answers": {
+    "department": {
+      "type": "choice", "choice": "technical",
+      "probabilities": {"billing": 0.003, "technical": 0.995, "sales": 0.002},
+      "confidence": 0.9683 },
+    "is_urgent": { "type": "noul", "noul": 0.95 },
+    "frustration": {
+      "type": "score", "score": 1.095,
+      "legend": {"0": "Calm, just stating facts",
+                 "1": "Frustrated but civil",
+                 "2": "Very angry, strong language"},
+      "probabilities": {"0": 0.235, "1": 0.435, "2": 0.33},
+      "confidence": 0.0275 }
+  }
+}</code></pre>
+          <p class="note">Values above are illustrative of the shape. Measured
+            values for the docs' own example requests are in &#167;&#8202;6. Each
+            response also carries a <code>usage</code> object: input = state +
+            questions, output = serialized answers; token counts are from our
+            tokenizer (documented divergence in accounting, not semantics).</p>
+        </section>
+
+        <section class="doc-section" id="confidence">
+          <h2><span class="sec-no">&#167;&#8202;4</span>Confidence &amp; determinism</h2>
+          <p><code>confidence</code> appears on choice and score answers only. The
+            reference's exact formula is not public; ours is
+            1 &#8722; H(p)/ln K, floored at 0 (a documented divergence, asserted by
+            the test suite). Run-to-run behavior is fully deterministic — a
+            documented improvement over the reference's std &#8776; 0.01; ensemble
+            noise is a future flag.</p>
+        </section>
+
+        <section class="doc-section" id="serving">
+          <h2><span class="sec-no">&#167;&#8202;5</span>Serving</h2>
+          <pre><code># packaged distribution (merged model + heads + constants; no local artifacts)
+python3 -m kapteeni.serve --dist ./kapteeni-v1-meticulous-dist --port 8000
+python3 -m kapteeni.serve --hf TriusAI/kapteeni-v1-intuit --port 8000
+
+# from local training artifacts
+python3 -m kapteeni.serve --bundle model_cache/kapteeni_v1.pt \
+    --lora model_cache/kapteeni_p2/adapter --served-as kapteeni-v1-meticulous --port 8000
+
+# two-variant committee (output-averaged answers)
+python3 -m kapteeni.serve --dist ./kapteeni-v1-meticulous-dist \
+    --dist2 ./kapteeni-v1-intuit-dist --committee --port 8000
+
+# mock model: no GPU, full wire contract
+python3 -m kapteeni.serve --port 8000</code></pre>
+          <div class="table-scroll">
+            <table class="data">
+              <thead>
+                <tr><th>Flag</th><th>Effect</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><code>--hf</code> / <code>--dist</code></td><td>load a packaged distribution from Hugging Face or a local directory</td></tr>
+                <tr><td><code>--bundle</code> / <code>--lora</code> / <code>--fit</code></td><td>serve from training artifacts (head bundle, LoRA adapter, blend-constants JSON)</td></tr>
+                <tr><td><code>--model</code></td><td>merged model directory for <code>--bundle</code> serving (default: the base backbone)</td></tr>
+                <tr><td><code>--readout</code></td><td><code>blend</code> (head + verbalizer, default), <code>head</code>, or <code>verb</code></td></tr>
+                <tr><td><code>--committee</code></td><td>ensemble with a second model (<code>--bundle2/--lora2/--fit2</code> or <code>--dist2</code>) by output-averaging</td></tr>
+                <tr><td><code>--served-as</code></td><td>name reported in responses and <code>/v1/models</code> (default: the dist's config, else <code>kapteeni-v1</code>)</td></tr>
+                <tr><td><code>--host</code> / <code>--port</code></td><td>bind address (default <code>127.0.0.1:8000</code>)</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="doc-section" id="live">
+          <h2><span class="sec-no">&#167;&#8202;6</span>Live demo — the docs' own examples, measured</h2>
+          <p>Run against the served model by <code>demo_requests.py</code>; every
+            request below is taken unchanged from docs.typesafe.ai.</p>
+          <div class="table-scroll">
+            <table class="data fixed-cols">
+              <thead>
+                <tr><th>Request</th><th>Answer</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>"Help! My payouts have been failing for 3 days." — urgency (noul)</td><td class="num">0.94</td></tr>
+                <tr><td>same state — department (choice)</td><td class="num">technical 0.99, confidence 0.96</td></tr>
+                <tr><td>"API returning 500s, orders blocked" — is_urgent</td><td class="num">0.95</td></tr>
+                <tr><td>same — frustration (score, 3 levels)</td><td class="num">1.10 (0.24/0.43/0.33), confidence 0.02 — honest uncertainty on a genuinely ambiguous case</td></tr>
+                <tr><td>State-page refund workflow (dot-paths)</td><td class="num">refund_requested 0.99, policy_supports 0.98</td></tr>
+                <tr><td>held-out fact check (FEVER-style)</td><td class="num">0.96</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+
+      <footer class="colophon">
+        <p class="colophon-rule"><span class="fleuron">&#10087;</span></p>
+        <p class="colophon-text">The executable spec of this wire format is
+          <a href="https://github.com/TriusAI/Kapteeni/blob/main/kapteeni/contract.py">kapteeni/contract.py</a>;
+          the HTTP layer is
+          <a href="https://github.com/TriusAI/Kapteeni/blob/main/kapteeni/serve.py">kapteeni/serve.py</a>.</p>
+        <p class="colophon-contact">
+          <a href="https://triusai.github.io/">TriusAI</a> ·
+          <a href="index.html">Overview</a> ·
+          <a href="bench.html">Benchmarks</a> ·
+          <a href="https://github.com/TriusAI/Kapteeni">GitHub</a>
+        </p>
+      </footer>
+
+    </div>
+  </body>
+</html>
