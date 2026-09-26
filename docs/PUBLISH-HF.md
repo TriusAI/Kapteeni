@@ -1,5 +1,39 @@
 # Publishing Kapteeni v1 variants to Hugging Face
 
+**Status (2026-09-26): both repos exist under TriusAI**
+(`TriusAI/kapteeni-v1-meticulous`, `TriusAI/kapteeni-v1-intuit`) and the
+full distributions are uploaded. The remaining workflow is incremental:
+
+**Card-only updates** (numbers/caveats in the model cards, no weights
+change): regenerate locally without a GPU —
+
+```bash
+python3 -m kapteeni.pack --cards-only --served-as kapteeni-v1-meticulous
+python3 -m kapteeni.pack --cards-only --served-as kapteeni-v1-intuit
+```
+
+— then push just the file (seconds; the HF repo stores files
+independently, so weights are untouched):
+
+```bash
+cd ../kapteeni-v1-meticulous-dist
+huggingface-cli upload TriusAI/kapteeni-v1-meticulous README.md README.md \
+    --repo-type model --commit-message "Card: <what changed>"
+# likewise for ../kapteeni-v1-intuit-dist -> TriusAI/kapteeni-v1-intuit
+```
+
+The same `--cards-only` run also refreshes the bundled `kapteeni/`
+package inside each dist; push it the same way if desired
+(`huggingface-cli upload <repo> kapteeni kapteeni --repo-type model`).
+From the build machine, prefix `HTTPS_PROXY=http://127.0.0.1:10081`
+(the direct route to huggingface.co is blocked here; the proxy works).
+
+**Full repacks** are needed only when weights/heads/constants change:
+`python3 -m kapteeni.pack --served-as <variant>` (see below for the
+intuit flags) — ~12 min each, then upload.
+
+---
+
 Kapteeni v1 ships as **two variants** (same architecture and wire format,
 different training data and serving constants):
 
