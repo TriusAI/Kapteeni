@@ -14,8 +14,9 @@ and
 Each is a self-contained snapshot: merged bf16 model, tokenizer, readout heads
 (safetensors), serving constants, the `kapteeni/` package, and a model card.
 
-**Code:** https://github.com/TriusAI/Kapteeni at
-[`3adc8bb`](https://github.com/TriusAI/Kapteeni/tree/3adc8bbf16) (Apache-2.0).
+**Code:** https://github.com/TriusAI/Kapteeni at tag
+[`bench-request-v1`](https://github.com/TriusAI/Kapteeni/tree/bench-request-v1)
+(Apache-2.0).
 The repository carries the full pipeline (data, training, serving, 104 tests),
 every raw public-half run record, the pre-registrations, and the negative
 results.
