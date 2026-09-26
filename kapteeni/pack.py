@@ -48,7 +48,7 @@ language:
 library_name: transformers
 ---
 
-# Kapteeni v1 @@SERVED_AS@@ — a Jev-compatible System One decision model
+# Kapteeni v1 (@@SERVED_AS@@) — a Jev-compatible System One decision model
 
 Send a `state` plus typed questions; get back **calibrated probability
 distributions** your code can branch on. No text generation. Kapteeni
@@ -108,9 +108,15 @@ through the server. Numbers only — no placement claims; see caveats.
 @@BENCH@@
 
 Axes common to both variants: Speed 81.0 (p50 0.17 s, p95 1.2 s on an
-AMD Strix Halo iGPU, x2 self-hosted adjustment) · Cost 42.4 (597 input
-tokens/decision at an assumed $0.14/M hosted price). Composite =
-harmonic mean; the Intelligence<50 gate does not apply.
+AMD Strix Halo iGPU, x2 self-hosted adjustment) · Cost: 597 input
+tokens/decision at the hosted list price — verified 2026-09-26: $0.03/M
+(Novita, qwen3-4b-fp8) = $0.018/1k decisions; nearest official Alibaba
+tier (qwen-turbo, $0.05/M) = $0.030/1k; an earlier $0.14/M assumption
+($0.083/1k) is kept as the pessimistic bound. Under the benchmark's
+published Jev-class definition (cost <= $0.080/1k decisions, adjusted
+median latency <= 1.30 s), both variants qualify at verified prices
+(adjusted p50 0.34 s). Composite = harmonic mean; the Intelligence<50
+gate does not apply.
 
 **Caveats, stated plainly:** self-reported public half (judge and sealed
 items are private; not an official rank); all serving constants
@@ -242,10 +248,35 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--adapter-only", action="store_true",
                     help="ship the LoRA adapter (~300MB) instead of the "
                          "merged model (~8GB); users merge at load time")
+    ap.add_argument("--cards-only", action="store_true",
+                    help="refresh ONLY README.md + the bundled kapteeni/ "
+                         "package in an existing dist dir (weights, heads, "
+                         "config untouched; no GPU)")
     args = ap.parse_args(argv)
 
     variant = ("intuit" if "intuit" in args.served_as else "meticulous")
     out = Path(args.out or f"../kapteeni-v1-{variant}-dist")
+
+    if args.cards_only:
+        if not out.exists():
+            print(f"error: {out} does not exist; --cards-only refreshes "
+                  "an existing distribution", flush=True)
+            return 2
+        vt = _variant_text(args.served_as)
+        card = (MODEL_CARD
+                .replace("@@SERVED_AS@@", args.served_as)
+                .replace("@@BLURB@@", vt["blurb"])
+                .replace("@@BENCH@@", vt["bench"])
+                .replace("@@TRAINED@@", vt["trained"])
+                .replace("@@LIMITS@@", vt["limits"]))
+        (out / "README.md").write_text(card, encoding="utf-8")
+        pkg = out / "kapteeni"
+        if pkg.exists():
+            shutil.rmtree(pkg)
+        shutil.copytree(Path(__file__).parent.parent / "kapteeni", pkg,
+                        ignore=shutil.ignore_patterns("__pycache__"))
+        print(f"cards-only: refreshed README.md + bundled package in {out}")
+        return 0
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
