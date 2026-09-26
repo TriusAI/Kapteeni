@@ -323,3 +323,18 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   calibration does not average. Mode not promoted; merge code kept.
   Surviving idea: per-request ROUTING between members (own pre-reg needed).
 - Servers restored: meticulous :8000, intuit :8001 (from their dists).
+
+## 2026-09-26 (night) — bench request drafted; posting pending the code push
+
+- Read the benchmark's bench-request issues (#79 decider-4b v2, #100
+  deck-4B) as format templates; drafted ours in docs/BENCH-REQUEST.md
+  (pinned HF revisions 8c1abcf/6466d70 — verified current incl. the user's
+  refreshed cards; exact per-variant measured tables; identity checks;
+  run commands; limits; full disclosures incl. the zero-hit 8-word
+  contamination audit — scripts/contamination_audit.py).
+- Code pinned at tag bench-request-v1 (avoids self-reference); the tag +
+  2 commits await the user's SSH push (the fine-grained gh PAT cannot
+  write the TriusAI repo; the gpg-agent socket has no key loaded for
+  non-interactive use).
+- Issue body staged at /tmp/opencode/bench-request-body.md; gh CLI is
+  authenticated (bctnry) and the API is reachable via proxy 10081.
