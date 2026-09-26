@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from collections import defaultdict
 from pathlib import Path
 
@@ -82,6 +83,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--criteria", default="data_cache/synth2_criteria.json")
     ap.add_argument("--device", default="cuda")
     ap.add_argument("--out", default="")
+    ap.add_argument("--committee", action="store_true",
+                    help="ensemble with a second model (--bundle2 etc.)")
+    ap.add_argument("--bundle2", default="")
+    ap.add_argument("--lora2", default="")
+    ap.add_argument("--fit2", default="")
+    ap.add_argument("--dist2", default="")
     args = ap.parse_args(argv)
 
     blend = (json.loads(Path(args.fit).read_text()) if args.fit else None)
@@ -93,12 +100,27 @@ def main(argv: list[str] | None = None) -> int:
     model = SystemOneModel(args.bundle, device=args.device,
                            model_name=args.model or DEFAULT_MODEL,
                            lora=args.lora or None, blend=blend)
+    if args.committee:
+        from kapteeni.committee import CommitteeModel
+
+        if args.dist2:
+            second = SystemOneModel.from_dist(args.dist2,
+                                              device=args.device)
+        else:
+            blend2 = (json.loads(Path(args.fit2).read_text())
+                      if args.fit2 else None)
+            second = SystemOneModel(args.bundle2, device=args.device,
+                                    lora=args.lora2 or None, blend=blend2)
+        model = CommitteeModel(model, second)
 
     stats: dict[tuple, list] = defaultdict(list)
     confs: dict[tuple, list] = defaultdict(list)
+    latencies: list[float] = []
     for i, row in enumerate(rows):
         qs = {"q": build_questions(row, criteria)}
+        t0 = time.perf_counter()
         answers, _ = model.evaluate(row["state"], qs)
+        latencies.append(time.perf_counter() - t0)
         ok = score_row(answers["q"], row)
         conf, ok_tl = top_label(answers["q"], row)
         stats[(row["meta"]["family"], row["primitive"])].append(ok)
@@ -131,6 +153,13 @@ def main(argv: list[str] | None = None) -> int:
     print(f"OVERALL                       n={len(overall):4d} "
           f"acc={sum(overall)/len(overall):.4f} ece={tot_ece:.4f}")
 
+    if latencies:
+        ls = sorted(latencies)
+        p50 = ls[len(ls) // 2]
+        p95 = ls[int(len(ls) * 0.95)]
+        print(f"latency n={len(ls)} p50={p50:.3f}s p95={p95:.3f}s "
+              f"(mean {sum(ls)/len(ls):.3f}s)")
+
     if args.out:
         payload = {
             "overall_acc": sum(overall) / len(overall),
@@ -139,6 +168,8 @@ def main(argv: list[str] | None = None) -> int:
             "cells": {f"{f}|{p}": {"n": len(v), "acc": sum(v) / len(v)}
                       for (f, p), v in stats.items()},
             "n_rows": len(overall),
+            "latency_s": ({"p50": p50, "p95": p95, "n": len(ls)}
+                          if latencies else None),
         }
         Path(args.out).write_text(json.dumps(payload, indent=2))
         print(f"wrote {args.out}")

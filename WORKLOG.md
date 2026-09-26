@@ -305,3 +305,21 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   passes). True serving cost is 2x GPU time — stated plainly in the docs.
   Eligibility note added as descriptive fact (no placement claims,
   per policy).
+
+## 2026-09-26 (evening) — committee (output-ensembling): negative result on
+## calibration; mode not promoted; servers restored
+
+- Pre-registered (docs/PREREG-COMMITTEE.md, deployment-side gates only, no
+  bench): output-average meticulous + intuit (committee.py: pure merge with
+  the contract's own shaping formulas; serve.py --committee; familyval
+  --committee + per-item latency recording; 104 tests green).
+- Measured (609-row synth2 val, idle GPU): accuracy 0.801 (G1 pass, 97% of
+  intuit's gain), latency p50 0.336s (G3 pass, Jev-class with margin), but
+  top-label ECE 0.0795 (G2 FAIL — worse than both members' 0.063/0.043).
+- Mechanism: averaging dilutes intuit's correct confidence with
+  meticulous's hedging -> systematic underconfidence (multi_hop: acc 0.917
+  kept, ECE 0.137). Third failed combining mechanism (weight-space soup,
+  constants-space v1.2/v1.2.1, output-space committee): meticulous's
+  calibration does not average. Mode not promoted; merge code kept.
+  Surviving idea: per-request ROUTING between members (own pre-reg needed).
+- Servers restored: meticulous :8000, intuit :8001 (from their dists).

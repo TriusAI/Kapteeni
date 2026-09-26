@@ -37,9 +37,12 @@ VARIANT_INFO = {
         "traffic.",
     "kapteeni-v1-intuit": "Sharper decisions: strongest on well-formed "
         "numeric, temporal, and multi-step policy traffic.",
+    "kapteeni-v1-committee": "Both variants, output-averaged: the "
+        "meticulous and intuit models vote; probabilities are merged with "
+        "the contract's own shaping formulas.",
 }
 ACCEPTED_MODELS = {"jev-latest", "kapteeni-v1", "kapteeni-v1-meticulous",
-                   "kapteeni-v1-intuit"}
+                   "kapteeni-v1-intuit", "kapteeni-v1-committee"}
 
 
 def make_handler(model, api_key: str | None, served_as: str):
@@ -136,7 +139,30 @@ def main(argv: list[str] | None = None) -> int:
                     help="name reported in responses and /v1/models; "
                          "default: the dist's own config, else kapteeni-v1 "
                          "(legacy name for -meticulous)")
+    ap.add_argument("--committee", action="store_true",
+                    help="ensemble the primary model with a second one "
+                         "(--bundle2/--lora2/--fit2 or --dist2) by "
+                         "output-averaging their answers")
+    ap.add_argument("--bundle2", default="", help="second model's bundle")
+    ap.add_argument("--lora2", default="", help="second model's LoRA dir")
+    ap.add_argument("--fit2", default="", help="second model's blend json")
+    ap.add_argument("--dist2", default="",
+                    help="second model's packaged distribution dir")
     args = ap.parse_args(argv)
+
+    def _load_single(spec: dict):
+        """spec: {dist, bundle, lora, fit, model} -> SystemOneModel."""
+        if spec["dist"]:
+            print(f"loading packaged distribution from {spec['dist']} ...",
+                  flush=True)
+            return SystemOneModel.from_dist(spec["dist"],
+                                            readout=args.readout)
+        blend = (json.loads(Path(spec["fit"]).read_text())
+                 if spec["fit"] else None)
+        return SystemOneModel(spec["bundle"], readout=args.readout,
+                              lora=spec["lora"] or None,
+                              model_name=spec["model"] or DEFAULT_MODEL,
+                              blend=blend)
 
     served_as = args.served_as
     if args.hf:
@@ -153,15 +179,26 @@ def main(argv: list[str] | None = None) -> int:
     elif args.bundle:
         print(f"loading trained model from {args.bundle} "
               f"(readout: {args.readout}) ...", flush=True)
-        blend = (json.loads(Path(args.fit).read_text())
-                 if args.fit else None)
-        model = SystemOneModel(args.bundle, readout=args.readout,
-                               lora=args.lora or None,
-                               model_name=args.model or DEFAULT_MODEL,
-                               blend=blend)
+        model = _load_single({"dist": "", "bundle": args.bundle,
+                              "lora": args.lora, "fit": args.fit,
+                              "model": args.model})
     else:
         print("serving MockModel (pass --bundle for the trained model)", flush=True)
         model = MockModel()
+    if args.committee:
+        from kapteeni.committee import CommitteeModel
+
+        if not (args.dist2 or args.bundle2):
+            print("error: --committee needs --bundle2/--lora2/--fit2 or "
+                  "--dist2 for the second model", flush=True)
+            return 2
+        print("committee mode: output-averaging with the second model ...",
+              flush=True)
+        second = _load_single({"dist": args.dist2, "bundle": args.bundle2,
+                               "lora": args.lora2, "fit": args.fit2,
+                               "model": ""})
+        model = CommitteeModel(model, second)
+        served_as = served_as or "kapteeni-v1-committee"
     served_as = served_as or "kapteeni-v1"
     if served_as not in (ACCEPTED_MODELS - {"jev-latest"}):
         print(f"error: unknown --served-as {served_as!r}", flush=True)
