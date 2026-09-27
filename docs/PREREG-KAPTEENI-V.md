@@ -143,6 +143,36 @@ structural options (modality-routed adapters, LR, target-module
 selection), not further ratio tuning. Same-recipe reruns remain
 forbidden.
 
+## V2.1 OUTCOME (2026-09-28) — second negative result on the text gate;
+## the mixed-recipe space is closed
+
+Run: 2,743 steps, ~10.2M real tokens, ~7h, peak 17.9G, no OOM.
+Final gates on the completed adapter
+(`data_cache/v2_1_final_gate.json`):
+
+| gate | required | V2 (near-parity mix) | V2.1 (2.3x text) | frozen |
+|---|---|---:|---:|---:|
+| synth3-val (image) | > 0.8119 | 0.8458 | **0.8932** | 0.8119 |
+| MNLI noul (text) | >= 0.88 | 0.8333 | **0.8267** | 0.90 |
+
+Conclusions across the series:
+1. **Image decision skills are trainable and robust** — +8.1pt over the
+   frozen backbone at n=590 (beyond the +-3.9pt CI), in both mix
+   settings; more total training tokens helped the image side.
+2. **Text erosion is structural to the mixed recipe** — ~0.90 -> ~0.83
+   INVARIANT to a 2.3x change in text replay volume. The answer-SFT +
+   full-projection LoRA style disrupts general text yes/no behavior;
+   ratio tuning cannot fix it, per the amended decision rule.
+
+**Next (per the pre-registered fail-path):** the structural option that
+requires NO further training and matches this repo's routing pattern —
+**modality-routed serving**: text requests through the FROZEN backbone
+(MNLI 0.90 >= 0.88 by construction), image requests through the V2.1
+adapter (synth3-val 0.893 > 0.812). One wire contract, one server,
+two internal paths routed by `state.image`. To be pre-registered
+(V3-ROUTED) before any serving work claims it: both paths' gates
+measured on their own slices through the served readout.
+
 ## V0 OUTCOME (2026-09-27) — PASSED
 
 Frozen Qwen3-VL-4B-Instruct (zero training), lettered LM-head readout,

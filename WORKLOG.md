@@ -370,3 +370,19 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   adjusted. The mechanism (insufficient replay ratio, not method
   failure) motivates a pre-registrable follow-up: token-parity replay
   (~2x text volume), same recipe and gates.
+
+## 2026-09-28 — V2.1 (all-text replay): second negative result; mixed-recipe space closed
+
+- Completed cleanly: 2,743 steps / ~10.2M real tokens / ~7h / peak 17.9G
+  / no OOM (the real-token batching + checkpoint/resume carried over).
+- Final gates: synth3-val 0.8932 (PASS, +8.1pt over frozen 0.8119,
+  beyond the 590-item CI); MNLI 0.8267 (FAIL vs >= 0.88, frozen 0.90).
+- Series conclusion: text erosion (~0.90 -> ~0.83) is INVARIANT to a
+  2.3x change in text replay volume — structural to the mixed recipe
+  (answer-SFT + full-projection LoRA), not a ratio problem. The image
+  side trains robustly in both settings.
+- Per the amended pre-reg's fail-path: next is the structural option,
+  modality-routed serving — text through the frozen backbone (MNLI
+  0.90 by construction), images through the V2.1 adapter (0.893) —
+  no further training required. To be pre-registered as V3-ROUTED
+  before serving work claims it.
