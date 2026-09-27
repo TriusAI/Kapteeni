@@ -111,6 +111,42 @@ is unchanged; this is a measurement-instrument repair, not a gate
 adjustment — a readout that misses a model's answer vocabulary measures
 the tokenizer, not the decision.
 
+## Step 0 OUTCOME (2026-09-28) — GLM excluded on stack grounds; the
+## tie-break selects Qwen3.5-4B
+
+**Amended-instrument results** (`data_cache/baseprobe/*.json`):
+
+| candidate | synth3-val | MNLI-noul | OCNLI-noul | MEAN | cost /1k |
+|---|---:|---:|---:|---:|---:|
+| Qwen3.5-9B | 0.8203 | 0.8800 | 0.8733 | **0.8579** | ~$0.036 |
+| Qwen3.5-4B | 0.8068 | 0.8667 | 0.8600 | **0.8445** | ~$0.018 |
+| GLM-4.6V-Flash | — stalled — | — | — | (unmeasured) | ~$0 |
+
+**GLM exclusion (stack, not model):** the GLM probe stalled three
+times at the identical stack location — the ViT patch Conv2d
+(modeling_glm4v.py:765), grinding single-core for 12+ minutes on
+first-touch batches — because its dynamic-resolution tower triggers
+per-image-shape MIOpen kernel searches on ROCm (MIOPEN_FIND_MODE=1 did
+not help; faulthandler traces recorded in data_cache/probe_glm.log).
+Since v1.1 must train and serve on this box, an inference path this
+pathological here disqualifies GLM as our base regardless of its
+measured quality — which remains UNKNOWN, not low. Revisitable only
+under a fresh pre-registration with a different stack (a CUDA host, a
+vLLM build, or a standardized single-grid image pipeline, the last of
+which would break identical-harness fairness for all candidates).
+
+**Selection (rule applied as pre-registered):** 9B leads by 0.0134
+mean — inside the 0.03 tie window (each 150-item slice carries a ~2-3pt
+SE; the 9B's per-slice lead is consistent but sub-noise). With no
+non-Qwen candidate in the tie, the cost tie-break decides:
+**Qwen3.5-4B is the v1.1 backbone** (~$0.018/1k hosted fp8 vs ~$0.036).
+Corroborating external evidence recorded after the fact: the top open
+system on the JevBench v1.3-era board (SemIf, formerly OpenJev) runs
+on Qwen3.5-4B.
+
+**v1.1 frozen baselines (from this probe, fixed):** synth3-val 0.8068,
+MNLI-noul 0.8667, OCNLI-noul 0.8600.
+
 ## v1.1 proper — recipe pre-registered after the probe, before training
 
 Placeholder until the base is chosen (this section gets the full recipe

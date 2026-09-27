@@ -410,3 +410,19 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   render with thinking-kwarg auto-resolution, one-pass lettered
   readout, per-family synth3 breakdown). Slices verified to render.
 - Downloads launched (9B -> GLM -> 4B chained, proxy + Xet disabled).
+
+## 2026-09-28 — base-selection probe complete: Qwen3.5-4B selected for v1.1
+
+- Amended-instrument probes: Qwen3.5-9B mean 0.8579 (synth3 0.8203 /
+  MNLI 0.88 / OCNLI 0.8733); Qwen3.5-4B mean 0.8445 (0.8068 / 0.8667 /
+  0.86). Gap 0.0134 < the 0.03 tie window; cost tie-break (no non-Qwen
+  candidate remained) selects the 4B (~$0.018/1k fp8). GLM excluded on
+  stack grounds: its ViT patch-conv grinds per-image-shape MIOpen
+  kernel searches on our ROCm box (3 stalls at modeling_glm4v.py:765;
+  MIOPEN_FIND_MODE=1 didn't help) — a training-box disqualifier, not a
+  model-quality verdict (quality unmeasured; revisitable under a fresh
+  pre-reg on a different stack).
+- v1.1 frozen gate baselines fixed from the probe: synth3-val 0.8068,
+  MNLI-noul 0.8667, OCNLI-noul 0.8600.
+- External corroboration noted post hoc: top open JevBench system
+  (SemIf, ex-OpenJev) runs on Qwen3.5-4B.
