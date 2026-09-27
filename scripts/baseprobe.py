@@ -72,8 +72,11 @@ def resolve_think_kwargs(proc, think_kwargs):
         txt = proc.apply_chat_template(
             msgs, add_generation_prompt=True, tokenize=False,
             **think_kwargs)
-        return (dict(think_kwargs), txt[:160],
-                "<think>" in txt or "think" in txt.lower()[:300])
+        # Qwen-style: a CLOSED empty think block = thinking disabled;
+        # an OPEN think tag = thinking live.
+        head = txt.lower()[:400]
+        think_live = ("think" in head and "</think" not in head)
+        return (dict(think_kwargs), txt[:160], think_live)
     except TypeError:
         return {}, None, False
 
@@ -96,6 +99,7 @@ def render(proc, batch, think_kwargs):
 def probe(model, proc, tok, examples, device, think_kwargs, bs=8):
     model.eval()
     ids = {"yes": first_id(tok, "yes"), "no": first_id(tok, "no"),
+           "true": first_id(tok, "true"), "false": first_id(tok, "false"),
            "shi": first_id(tok, "是"), "fou": first_id(tok, "否")}
     letters = [first_id(tok, " " + L) for L in LETTERS]
     by, fam = defaultdict(lambda: [0, 0]), defaultdict(lambda: [0, 0])
@@ -110,12 +114,16 @@ def probe(model, proc, tok, examples, device, think_kwargs, bs=8):
             L = int(inputs["attention_mask"][j].sum())
             row = logits[j, L - 1, :]
             if ex["primitive"] == "noul":
+                pos = [ids["yes"], ids["true"]]
+                neg = [ids["no"], ids["false"]]
                 if ex["probe_key"] == "ocnli":
-                    p_yes = row[ids["yes"]] + row[ids["shi"]]
-                    p_no = row[ids["no"]] + row[ids["fou"]]
-                else:
-                    p_yes, p_no = row[ids["yes"]], row[ids["no"]]
-                pred = 1 if p_yes > p_no else 0
+                    pos.append(ids["shi"])
+                    neg.append(ids["fou"])
+                # probability mass per polarity (stabilized exp-sum)
+                m = float(row.max())
+                p_pos = torch.exp(row[pos] - m).sum()
+                p_neg = torch.exp(row[neg] - m).sum()
+                pred = 1 if p_pos > p_neg else 0
             else:
                 cand = letters[:ex["n_cands"]]
                 pred = int(torch.argmax(row[cand]))
@@ -130,6 +138,8 @@ def probe(model, proc, tok, examples, device, think_kwargs, bs=8):
 
 
 def main() -> int:
+    import faulthandler
+    faulthandler.dump_traceback_later(240, repeat=True)  # hang diagnosis
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
     ap.add_argument("--name", required=True)

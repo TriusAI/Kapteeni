@@ -85,6 +85,32 @@ differ between models; all three candidates get the identical harness.
 at probe time (~600 input tokens/decision, the v1 measured figure);
 Jev-class eligibility requires <= $0.080/1k decisions.
 
+## Step 0 AMENDMENT (2026-09-28, after the GLM smoke, before any full comparison)
+
+The GLM-4.6V-Flash smoke (4 items/slice) exposed a harness-format
+assumption: GLM answers the noul prompt with "true"/"false" (echoing
+the criteria labels) rather than "yes"/"no" — at the answer position
+"false" is top-5 and "yes" sits at rank 147, so the pre-registered
+yes/no readout measures noise there (MNLI smoke: 0.5 = chance).
+The lettered choice readout is unaffected (GLM's letter argmax matched
+gold on the debug item). GLM's template was also verified by rendered-
+prompt inspection to honor enable_thinking=False (an empty think pair;
+jinja silently ignores unknown kwargs, so "no error" alone would have
+proven nothing).
+
+**Instrument repair (applied identically to ALL candidates):**
+- noul EN: decision = argmax over probability mass on {yes, true}
+  vs {no, false} (sum of exponentials of the readout logits).
+- noul ZH: same, over {yes, true, 是} vs {no, false, 否}.
+- choice/score: unchanged (argmax over letter logits).
+
+All three candidates are (re-)probed with the amended instrument; the
+first-pass Qwen3.5-9B/4B reports (pure yes/no readout) are kept for
+the record but superseded. No gate values change; the selection rule
+is unchanged; this is a measurement-instrument repair, not a gate
+adjustment — a readout that misses a model's answer vocabulary measures
+the tokenizer, not the decision.
+
 ## v1.1 proper — recipe pre-registered after the probe, before training
 
 Placeholder until the base is chosen (this section gets the full recipe
