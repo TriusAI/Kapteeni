@@ -147,20 +147,78 @@ on Qwen3.5-4B.
 **v1.1 frozen baselines (from this probe, fixed):** synth3-val 0.8068,
 MNLI-noul 0.8667, OCNLI-noul 0.8600.
 
-## v1.1 proper — recipe pre-registered after the probe, before training
+## v1.1 RECIPE (pre-registered 2026-09-28, after the probe, before any v1.1 training)
 
-Placeholder until the base is chosen (this section gets the full recipe
-then): one wire contract with the `state.image` extension (per the
-V-track design), image + text + Chinese traffic, the V2/V2.1 lesson
-applied (modality handling chosen at recipe time with text
-non-regression as a hard gate), LoRA training on license-clean data
-(our synth families incl. Chinese-language variants + existing replay),
-per-primitive temperature scaling fit on held-out val from day one.
+**Backbone:** `Qwen/Qwen3.5-4B` (probe-selected above). Frozen
+baselines fixed by the probe: synth3-val **0.8068**, MNLI-noul
+**0.8667**, OCNLI-noul **0.8600**.
 
-Gates will be fixed relative to the winner's frozen baselines measured
-in Step 0, plus the standing rules: MNLI-noul non-regression,
-OCNLI-noul non-regression vs frozen, synth3-val > frozen, calibration
-(ECE) gates on held-out val.
+**Wire answer space (fixed):** {yes, no} for noul and letter tokens for
+choice/score in EVERY language. Chinese enters through state text,
+instructions, and criteria only — never through the answer tokens.
+Serving readouts stay unambiguous across languages; contract code is
+unchanged.
+
+**Training data** (all deterministic, gold by construction, ours or
+license-clean, zero benchmark items; MNLI/OCNLI/val slices never
+trained on):
+1. **synth3** — the existing 5,412 image rows (20 document families,
+   English questions, unchanged from the V-track).
+2. **synth3zh** — NEW Chinese-language question/state/criteria
+   templates over the same 20 image families (fresh deterministic
+   renders; same generators, Chinese text; answers stay yes/no +
+   letters). ~2,000 rows, is_val split as always.
+3. **English text replay at full non-val volume** — the same six
+   sources as V2.1 (~14,935 rows).
+4. **synth2zh** — NEW Chinese ports of the three skill families
+   (temporal_numeric with Chinese date formats / 工作日 semantics,
+   multi_hop with Chinese rule chains, long_policy with Chinese clause
+   grammar; facts generated from gold exactly as synth2 does).
+   ~4,000 rows, is_val split.
+5. Contamination: the 8-word audit extends to OCNLI before training;
+   the new zh generators cannot touch benchmark content by
+   construction (pure template families).
+
+**Recipe (the V2/V2.1 mechanism diagnosis applied from two sides):**
+- LoRA r=32, alpha=64, dropout 0.05 on **attention projections only**
+  (q/k/v/o of the language model) — narrower update footprint than
+  V2's all-projection config.
+- lr **5e-5** (half of V2's 1e-4).
+- Vision tower frozen; 1 epoch; real-token budget 4096; grad
+  checkpointing; checkpoints + resume every 150 steps.
+- Answer-token SFT in the lettered format for all three data kinds
+  (images, EN text, ZH text).
+- New-backbone hypothesis, stated honestly: Qwen3.5 is natively
+  multimodal (early-fusion pretraining), unlike Qwen3-VL-4B's bolted-on
+  tower — the V2/V2.1 text erosion may have been an artifact of
+  adapting that architecture. This recipe tests that.
+
+**Gates (fixed; final reading on the completed adapter, full slices):**
+
+| gate | requirement | basis |
+|---|---|---|
+| synth3-val (n=590) | > 0.8068 | strictly beat frozen (the point of v1.1) |
+| MNLI-noul (n=150) | >= 0.84 | frozen 0.8667 − 1 binomial SE (non-regression, noise-tolerant) |
+| OCNLI-noul (n=150) | >= 0.83 | frozen 0.8600 − 1 SE |
+| synth2zh val | >= 0.90 | in-distribution; must be mastered |
+| fitted ECE on combined held-out val | <= 0.10 | per-primitive temperatures fit on combined val (synth3-val + synth3zh-val + text val + synth2zh-val), the v1.2.1 lesson applied in advance |
+
+In-loop monitors (not gates): MNLI + OCNLI + synth3-val[:300] +
+synth2zh-val[:200] every 300 steps, for erosion diagnosis.
+
+**Engineering before the run (allowed; not gate measurement):** OOM
+smoke (~100 steps with peak-memory verification; the per-image vision
+token count re-measured from the Qwen3.5 processor, since the 400/image
+constant was Qwen3-VL-specific), resume mechanism verified.
+
+**Decision rule:** pass ALL gates -> fit constants, extend serving with
+the `state.image` wire field, ship as **kapteeni-v1.1** (single
+variant; meticulous-style conservative calibration is the identity).
+Fail ANY gate -> no ship, negative result documented with the in-loop
+trend, same recipe not rerun; the next step is a NEW pre-registration
+guided by which gate failed (candidate directions: lower LR, still-
+narrower targets, or modality-routed serving — text/Chinese through the
+frozen backbone, images through the adapter).
 
 ## Not allowed
 

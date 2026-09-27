@@ -426,3 +426,20 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   MNLI-noul 0.8667, OCNLI-noul 0.8600.
 - External corroboration noted post hoc: top open JevBench system
   (SemIf, ex-OpenJev) runs on Qwen3.5-4B.
+
+## 2026-09-28 — v1.1 recipe pre-registered (Qwen3.5-4B, images + Chinese)
+
+- Backbone Qwen3.5-4B; frozen baselines from the probe. Wire answer
+  space fixed: yes/no + letters in every language; Chinese enters via
+  state/instructions/criteria only.
+- Data: synth3 (5,412) + NEW synth3zh (~2,000 Chinese questions over
+  the same image families) + full EN text replay (~14,935) + NEW
+  synth2zh (~4,000 Chinese ports of the three skill families).
+- Recipe applies the V2/V2.1 mechanism diagnosis from two sides:
+  attention-only LoRA targets (narrower footprint) + lr 5e-5 (half of
+  V2), plus the stated new hypothesis: the natively-multimodal base may
+  not erode text the way the bolted-on Qwen3-VL did.
+- Gates fixed: synth3-val > 0.8068; MNLI >= 0.84; OCNLI >= 0.83
+  (each = frozen − 1 binomial SE); synth2zh-val >= 0.90; fitted ECE
+  <= 0.10 on combined held-out val. Fail -> no ship, next step is a
+  new pre-reg (lower LR / narrower / modality-routed).
