@@ -115,6 +115,34 @@ the text replay volume), same LoRA recipe, same gates. The mechanism
 diagnosis (insufficient replay, not a training-skill problem) points
 at the mix ratio, not the method.
 
+## V2.1 — token-parity replay (pre-registered 2026-09-27, before running)
+
+The V2 failure mechanism was ratio, not method: text behavior fell at
+the FIRST gate and never recovered under a ~2:1 image-heavy token mix.
+
+**Correction (2026-09-27, measured BEFORE any V2.1 run):** real-token
+accounting (tokenizer pass) shows the assumptions above were wrong.
+Measured: image side = ~2.58M tokens (not 4.3M), text prompts average
+~440 tokens (not ~340) — so V2's actual mix was ~0.76:1 image:text,
+ALREADY near parity, and the text gate still failed. The "2:1
+image-heavy" mechanism story was an estimate error. What survives:
+V2's text replay was 6.5k rows (~3.4M tokens) of decision-format-only
+items; text competence still eroded 0.90 -> 0.833.
+
+**Amended V2.1 hypothesis and recipe:** the intervention is *much more
+text weight* at its strongest cheap setting — text replay = ALL
+available non-val rows from the six sources (14,935 rows, ~6.58M
+tokens, ~0.39:1 image:text, 2.3x V2's text volume). Everything else
+unchanged: image data (all synth3 train rows), LoRA recipe, lr, budget,
+gates.
+
+**Decision rule (unchanged):** final gates measured on the completed
+adapter — synth3-val > 0.8119 AND MNLI >= 0.88. Pass -> V3. Fail either
+-> second documented negative result AND the hypothesis space moves to
+structural options (modality-routed adapters, LR, target-module
+selection), not further ratio tuning. Same-recipe reruns remain
+forbidden.
+
 ## V0 OUTCOME (2026-09-27) — PASSED
 
 Frozen Qwen3-VL-4B-Instruct (zero training), lettered LM-head readout,

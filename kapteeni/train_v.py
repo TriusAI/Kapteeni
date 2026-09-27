@@ -2,20 +2,20 @@
 projections (vision tower frozen), answer-token supervision through the
 LM head (docs/PREREG-KAPTEENI-V.md + the 2026-09-27 readout amendment).
 
-    python3 -m kapteeni.train_v --out model_cache/kapteeni_v2
+    python3 -m kapteeni.train_v --out model_cache/kapteeni_v2_1
 
-Pre-registered recipe (fixed before the run):
+Pre-registered V2.1 recipe (token-parity replay; fixed before the run):
   - image data: ALL synth3 train rows (5,412 after the deterministic
-    val split), one pass per question, lettered options
-  - text replay, same lettered format: BoolQ 1,500 + FEVER 800 +
-    Banking77 1,200 + CLINC150 800 + HelpSteer2 400 + synth2 1,800
-    (all non-val, deterministic subsamples)
+    val split), one pass per question, lettered options (~4.3M tokens)
+  - text replay, same lettered format, ALL non-val rows from BoolQ,
+    FEVER, Banking77, CLINC150, HelpSteer2 and synth2 (~12.8k rows,
+    ~4.3M tokens) — text:image ~1:1 in real tokens (V2's ~1:2 ratio
+    failed the MNLI gate; see the PREREG V2 OUTCOME)
   - MNLI: NEVER trained on (the text OOD gate, >= 0.88 final)
   - LoRA r=32 alpha=64 dropout 0.05 on language-model projections only,
-    lr 1e-4, one epoch, token budget 6144, grad checkpointing
-  - in-loop gates: MNLI noul slice every 300 steps; synth3 val slice
-    every 300 steps. Final gates (V2): image-val > frozen baseline;
-    MNLI >= 0.88.
+    lr 1e-4, one epoch, REAL-token budget 4096, grad checkpointing
+  - in-loop gates: MNLI noul slice + synth3 val slice every 300 steps;
+    final gates measured on the completed adapter
 """
 
 from __future__ import annotations
@@ -35,7 +35,11 @@ from kapteeni.vl_format import LETTERS, synth3_example, text_example, load_rows
 
 MODEL = "Qwen/Qwen3-VL-4B-Instruct"
 
-TEXT_REPLAY = {  # rows per source (pre-registered)
+TEXT_REPLAY = {  # rows per source; "all" = every non-val row (V2.1 parity recipe)
+    "boolq": "all", "fever": "all", "banking77": "all", "clinc150": "all",
+    "helpsteer2": "all",
+}
+TEXT_REPLAY_V2 = {  # the failed first recipe, kept for the record
     "boolq": 1500, "fever": 800, "banking77": 1200, "clinc150": 800,
     "helpsteer2": 400,
 }
@@ -64,15 +68,15 @@ def build_examples(seed: int = 7) -> tuple[list[dict], list[dict], list[dict]]:
             if name in CRITERIA else {}
         rows = [r for r in rows if not is_val(r["row_id"])]
         rng.shuffle(rows)
-        for r in rows[:n]:
+        take = rows if n == "all" else rows[:n]
+        for r in take:
             train.append(text_example(r, crit))
-    # synth2 text replay (family skills in the lettered format, 1,800
-    # pre-registered)
+    # synth2 text replay at full non-val volume (V2.1 parity recipe)
     s2 = [r for r in load_rows("data_cache/rows_synth2.jsonl")
           if not is_val(r["row_id"])]
     rng.shuffle(s2)
     crit2 = json.loads(open("data_cache/synth2_criteria.json").read())
-    for r in s2[:1800]:
+    for r in s2:
         train.append(text_example(r, crit2))
     rng.shuffle(train)
     # MNLI gate slice (eval only, never trained on)
