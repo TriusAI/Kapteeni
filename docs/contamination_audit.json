@@ -1,9 +1,30 @@
 {
-  "shingle_width_words": 8,
-  "normalization": "lowercase alnum word sequences",
-  "bench_items": 231,
-  "training_rows": 18457,
-  "items_with_hits": 0,
-  "total_shingle_hits": 0,
-  "hits": {}
+  "shingle_width_tokens": 8,
+  "normalization": "lowercase alnum words + single CJK chars",
+  "training_sources": [
+    "rows_boolq",
+    "rows_fever",
+    "rows_banking77",
+    "rows_clinc150",
+    "rows_helpsteer2",
+    "rows_synth2",
+    "rows_synth2zh",
+    "synth3/items",
+    "synth3zh/items"
+  ],
+  "val_rows_excluded": true,
+  "jevbench": {
+    "gate_items": 231,
+    "training_rows": 28804,
+    "items_with_hits": 0,
+    "total_shingle_hits": 0,
+    "hits": {}
+  },
+  "ocnli": {
+    "gate_items": 500,
+    "training_rows": 28804,
+    "items_with_hits": 0,
+    "total_shingle_hits": 0,
+    "hits": {}
+  }
 }
