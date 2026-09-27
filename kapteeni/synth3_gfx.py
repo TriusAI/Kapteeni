@@ -12,16 +12,25 @@ import random
 from PIL import Image, ImageDraw, ImageFont
 
 FONT_DIR = "/usr/share/fonts/truetype/dejavu"
+FONT_DIR_CJK = "/usr/share/fonts/opentype/noto"
 
 
-def _font(name: str, size: int) -> ImageFont.FreeTypeFont:
-    return ImageFont.truetype(f"{FONT_DIR}/{name}", size)
+def _font(name: str, size: int, cjk: bool = False) -> ImageFont.FreeTypeFont:
+    return ImageFont.truetype(
+        f"{FONT_DIR_CJK if cjk else FONT_DIR}/{name}", size)
 
 
 FACES = {  # (heading, body, small) font files
     "sans": ("DejaVuSans-Bold.ttf", "DejaVuSans.ttf", "DejaVuSans.ttf"),
     "serif": ("DejaVuSerif-Bold.ttf", "DejaVuSerif.ttf", "DejaVuSerif.ttf"),
     "mono": ("DejaVuSans-Bold.ttf", "DejaVuSansMono.ttf", "DejaVuSansMono.ttf"),
+}
+
+FACES_ZH = {  # Noto Sans CJK SC (index 0 of the .ttc is SC)
+    "sans": ("NotoSansCJK-Bold.ttc", "NotoSansCJK-Regular.ttc",
+             "NotoSansCJK-Regular.ttc"),
+    "serif": ("NotoSerifCJK-Bold.ttc", "NotoSerifCJK-Regular.ttc",
+              "NotoSerifCJK-Regular.ttc"),
 }
 
 # readable background/ink pairs; accents chosen for contrast on both
@@ -37,7 +46,8 @@ SIZE = 640
 class Style:
     """One render's cosmetic identity."""
 
-    def __init__(self, rng: random.Random, allow_dark: bool = True):
+    def __init__(self, rng: random.Random, allow_dark: bool = True,
+                 zh: bool = False):
         if allow_dark and rng.random() < 0.2:
             self.bg, self.ink = rng.choice(DARK)
             self.dark = True
@@ -45,13 +55,14 @@ class Style:
             self.bg, self.ink = rng.choice(PALETTES)
             self.dark = False
         self.accent = rng.choice(ACCENTS)
-        face = FACES[rng.choice(list(FACES))]
+        faces = FACES_ZH if zh else FACES
+        face = faces[rng.choice(list(faces))]
         hs = rng.randint(44, 54)
         bs = rng.randint(26, 32)
         ss = rng.randint(20, 24)
-        self.head = _font(face[0], hs)
-        self.body = _font(face[1], bs)
-        self.small = _font(face[2], ss)
+        self.head = _font(face[0], hs, zh)
+        self.body = _font(face[1], bs, zh)
+        self.small = _font(face[2], ss, zh)
         self.margin = rng.choice([36, 52, 68])
         self.centered_titles = rng.random() < 0.5
 
