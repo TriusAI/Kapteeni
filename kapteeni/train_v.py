@@ -189,13 +189,17 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--lr", type=float, default=1e-4)
     ap.add_argument("--token-budget", type=int, default=6144)
     ap.add_argument("--gate-every", type=int, default=300)
-    ap.add_argument("--ckpt-every", type=int, default=400)
+    ap.add_argument("--ckpt-every", type=int, default=150)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--frozen-baseline", action="store_true",
                     help="no training: measure the frozen backbone on the "
                          "V2 gate slices (the reference the trained model "
                          "must beat)")
     args = ap.parse_args(argv)
+
+    out_dir = Path(args.out)
+    ckpt = out_dir / "ckpt"
+    ckpt.mkdir(parents=True, exist_ok=True)
 
     train, val, gate_val = build_examples()
     if args.limit:
@@ -216,11 +220,13 @@ def main(argv: list[str] | None = None) -> int:
               flush=True)
         model.eval()
         g1 = run_gate(model, proc, tok, gate_val, args.device, limit=150)
-        g2 = run_gate(model, proc, tok, val, args.device, limit=10000)
+        g2 = run_gate(model, proc, tok, val, args.device, limit=100000)
         out = {"mnli_noul": g1.get("text"),
                "synth3_val": g2.get("synth3")}
         (out_dir / "frozen_baseline.json").write_text(json.dumps(out,
                                                                 indent=2))
+        Path("data_cache/v2_frozen_baseline.json").write_text(
+            json.dumps(out, indent=2))
         print(json.dumps(out, indent=2))
         return 0
 
@@ -230,28 +236,47 @@ def main(argv: list[str] | None = None) -> int:
     params = [p for p in model.parameters() if p.requires_grad]
     opt = torch.optim.AdamW(params, lr=args.lr, weight_decay=0.0)
 
-    # batch by token budget (rough): image ~550 tokens, text ~300
-    def cost(ex):
-        return 550 if ex["image"] else 300
+    prompt_lens = tok.tokenizer(
+        [e["prompt"] for e in train], add_special_tokens=False)["input_ids"]
+
+    # batch by REAL token count (prompt tokens + chat-template overhead
+    # + ~400 vision tokens per image); the fake-unit budget of the first
+    # attempt packed 3x heavier batches than intended and OOM'd
+    def cost(i):
+        c = len(prompt_lens[i]) + 24
+        if train[i]["image"]:
+            c += 400
+        return c
+    order = sorted(range(len(train)), key=cost)
     batches, cur, cur_c = [], [], 0
-    order = sorted(range(len(train)), key=lambda i: cost(train[i]))
-    rng = random.Random(args.seed if hasattr(args, "seed") else 0)
     for i in order:
-        c = cost(train[i])
-        if cur and cur_c + c > args.token_budget:
+        c = cost(i)
+        if cur and (cur_c + c > args.token_budget or len(cur) >= 12):
             batches.append(cur)
             cur, cur_c = [], 0
         cur.append(i)
         cur_c += c
     if cur:
         batches.append(cur)
-    print(f"batches: {len(batches)}", flush=True)
+    print(f"batches: {len(batches)} "
+          f"(real-token budget {args.token_budget})", flush=True)
 
-    out_dir = Path(args.out)
-    ckpt = out_dir / "ckpt"
-    ckpt.mkdir(parents=True, exist_ok=True)
-    step, t0, done = 0, time.time(), 0
-    for bi in range(len(batches)):
+    # resume: adapter + optimizer + step from the checkpoint dir
+    step = 0
+    if (ckpt / "adapter").exists() and (ckpt / "opt.pt").exists():
+        from peft import PeftModel
+
+        model = PeftModel.from_pretrained(model.base_model.model,
+                                          str(ckpt / "adapter"))
+        model.gradient_checkpointing_enable()
+        model.enable_input_require_grads()
+        opt.load_state_dict(torch.load(ckpt / "opt.pt", weights_only=True))
+        step = json.loads((ckpt / "state.json").read_text())["step"]
+        model.train()
+        print(f"resumed at step {step}", flush=True)
+
+    step, t0, done = step, time.time(), 0
+    for bi in range(step, len(batches)):
         batch = [train[i] for i in batches[bi]]
         inputs = encode_batch(proc, tok, batch)
         inputs = {k: v.to(args.device) for k, v in inputs.items()}
@@ -261,11 +286,11 @@ def main(argv: list[str] | None = None) -> int:
         opt.step()
         opt.zero_grad(set_to_none=True)
         step += 1
-        done += sum(cost(e) for e in batch)
+        done += sum(cost(i) for i in batches[bi])
         if step % 20 == 0:
             mem = torch.cuda.max_memory_allocated() / 2**30
             print(f"  step {step}/{len(batches)} loss {float(out.loss):.4f}"
-                  f" ({done / (time.time() - t0):.0f} tok/s est, "
+                  f" ({done / (time.time() - t0):.0f} real tok/s, "
                   f"peak {mem:.1f}G)", flush=True)
             torch.cuda.reset_peak_memory_stats()
         if step % args.gate_every == 0:
@@ -274,7 +299,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  [gate {step}] MNLI noul acc={g1.get('text')} "
                   f"synth3-val acc={g2.get('synth3')}", flush=True)
         if step % args.ckpt_every == 0:
-            model.save_pretrained(str(ckpt))
+            model.save_pretrained(str(ckpt / "adapter"))
+            torch.save(opt.state_dict(), ckpt / "opt.pt")
+            (ckpt / "state.json").write_text(json.dumps({"step": step}))
 
     model.save_pretrained(str(out_dir / "adapter"))
     (out_dir / "recipe.json").write_text(json.dumps({
