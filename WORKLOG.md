@@ -386,3 +386,27 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   0.90 by construction), images through the V2.1 adapter (0.893) —
   no further training required. To be pre-registered as V3-ROUTED
   before serving work claims it.
+
+## 2026-09-28 (early) — v1.1 track opened; base-selection probe pre-registered
+
+- Direction set by the user: abandon the dedicated-image-model line;
+  v1.1 will be a NEW unified model (images + Chinese + a researched
+  backbone). The Qwen3 choice for v1/V was inherited, not chosen.
+- Researched the 2026 small-VLM landscape. Exclusions documented with
+  reasons (Qwen3.8-27B: $0.27/1k decisions, 3.4x over the Jev-class
+  cutoff + the monoculture pick; InternVL3.5: Qwen3 backbone inside;
+  MiniCPM: registration-clause lineage / 1B current; Kimi-VL: 2025 gen;
+  Gemma: terms + weaker zh).
+- Pre-registered Step 0 (docs/PREREG-KAPTEENI-V11.md, committed BEFORE
+  any measurement): frozen probe over Qwen3.5-9B / Qwen3.5-4B /
+  GLM-4.6V-Flash on synth3-val (590) + MNLI-noul (150) + new
+  OCNLI-noul (150, CC BY-NC eval-only, Chinese templates, bilingual
+  yes+是 / no+否 group readout). Selection rule: highest mean; within
+  0.03 -> prefer the non-Qwen candidate, then lower hosted cost.
+- scripts/build_ocnli.py: rows_ocnli.jsonl built (500 rows; dev labels
+  are explicit strings, so the entailment->true mapping is
+  unambiguous). data_cache/ stays untracked -> no NC redistribution.
+- scripts/baseprobe.py: the multi-model probe harness (chat-template
+  render with thinking-kwarg auto-resolution, one-pass lettered
+  readout, per-family synth3 breakdown). Slices verified to render.
+- Downloads launched (9B -> GLM -> 4B chained, proxy + Xet disabled).
