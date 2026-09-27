@@ -86,6 +86,35 @@ No training or constant selection on any benchmark's items (including
 imajev-bench); no gates adjusted after results; text non-regression is
 a hard gate, not a preference.
 
+## V2 OUTCOME (2026-09-27) — SPLIT: image gate PASSES, text gate FAILS
+
+First training attempt OOM-died at step 60 (fake-unit batch budget
+packed ~3x too heavy; silent kernel kill, no checkpoint) — fixed with
+real-token batching (peak 17.5G) + 150-step checkpoints/resume, and the
+full run completed cleanly: 1,584 steps, ~4.9M real tokens, ~5.3h.
+
+Final gate measurement on the completed adapter
+(`data_cache/v2_final_gate.json`):
+
+| gate | required | final | frozen | verdict |
+|---|---|---:|---:|---|
+| synth3-val (image) | > 0.8119 | **0.8458** | 0.8119 | PASS |
+| MNLI noul (text) | >= 0.88 | **0.8333** | 0.90 | **FAIL** |
+
+The image skills are trainable (frozen 0.812 -> 0.846-0.883 across
+readings; the data works). The text behavior regressed from the start
+and never recovered: in-loop MNLI readings were 0.833 / 0.883 / 0.858 /
+0.808 / 0.850 with no trend back toward the frozen model's 0.90 — the
+image-heavy mix (~2:1 image:text in real tokens) crowded out text
+decisions despite replay. Per the pre-registration this V2 recipe is
+NOT shipped and the same recipe is not rerun.
+
+**Pre-registrable next experiment (not run):** token-parity replay —
+weight the text mix so text:images is ~1:1 in real tokens (roughly 2x
+the text replay volume), same LoRA recipe, same gates. The mechanism
+diagnosis (insufficient replay, not a training-skill problem) points
+at the mix ratio, not the method.
+
 ## V0 OUTCOME (2026-09-27) — PASSED
 
 Frozen Qwen3-VL-4B-Instruct (zero training), lettered LM-head readout,

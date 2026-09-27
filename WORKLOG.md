@@ -352,3 +352,21 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   included), code at tag bench-request-v1 (7d365aa). Sealed-half
   evaluation now possible via their offline-container process if
   accepted.
+
+## 2026-09-27 (V2 complete) — split verdict: image gate passes, text gate fails
+
+- First launch OOM-died at step 60 (fake-unit batch packing ~3x too
+  heavy — 52.8G peak on 32G until the kernel killed it silently). Fixed
+  with real-token batching (tokenizer-measured prompt lengths + 400
+  vision tokens/image, 4096 real-token budget), 150-step checkpoints
+  with adapter+optimizer+step resume. Full run completed: 1,584 steps /
+  ~4.9M real tokens / ~5.3h, peak 17.8G.
+- Final gates on the completed adapter: synth3-val 0.8458 > frozen
+  0.8119 (PASS — the image skills are trainable); MNLI 0.8333 < 0.88
+  (FAIL — frozen 0.90; text behavior regressed from the first gate and
+  never recovered; the ~2:1 image-heavy token mix crowded out text
+  despite replay).
+- Per the pre-reg: not shipped, same recipe not rerun, gates not
+  adjusted. The mechanism (insufficient replay ratio, not method
+  failure) motivates a pre-registrable follow-up: token-parity replay
+  (~2x text volume), same recipe and gates.
