@@ -505,3 +505,10 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   encode_batch/run_gate/finalize — one sequence shape for every
   sub-512 batch (pad tokens masked; training math identical). Relaunched
   from ckpt-1050 at 22:07: image region ~11s/step. ETA ~03:00.
+- 23:30 no-ckpt memory findings: WITH pad_to=512 the fp32 logits tower
+  (bf16 copy + float() + grad ≈ 9.5G per 12x512 batch) plus
+  un-checkpointed activations OOM'd (run3, ~83G). Natural widths +
+  no-ckpt (run4, pid 477902, from ckpt-1200): peak stable 79.8G over
+  the image region so far, ~15s/step vs 24s checkpointed (recompute
+  eliminated). Watcher armed for auto-relaunch if the unified-memory
+  pool shrinks (desktop shares the 96G). ETA ~04:30.

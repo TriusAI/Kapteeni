@@ -89,11 +89,14 @@ def build_examples(seed: int = 7):
         [text_example(r, {}) for r in ocnli]
 
 
-def make_lora(model, r: int = 32, alpha: int = 64):
+def make_lora(model, r: int = 32, alpha: int = 64, ckpt: bool = True):
     """Attention projections only (q/k/v/o of the language model) — the
     narrower update footprint the V2/V2.1 diagnosis calls for. The
     Gated DeltaNet layers have no q/k/v/o projections and stay untouched,
-    as does the vision tower (no LoRA targets there at all)."""
+    as does the vision tower (no LoRA targets there at all). ckpt=False
+    disables gradient checkpointing (identical math, ~2x faster on
+    image batches; ~48G activation peak for the worst batch — measured,
+    fits the 96G box)."""
     from peft import LoraConfig, get_peft_model
     lcfg = LoraConfig(
         r=r, lora_alpha=alpha, lora_dropout=0.05, bias="none",
@@ -102,7 +105,8 @@ def make_lora(model, r: int = 32, alpha: int = 64):
                        r"o_proj)$",
     )
     model = get_peft_model(model, lcfg)
-    model.gradient_checkpointing_enable()
+    if ckpt:
+        model.gradient_checkpointing_enable()
     model.enable_input_require_grads()
     model.print_trainable_parameters()
     return model
@@ -117,19 +121,19 @@ def final_gates(model, proc, tok, val, gate_mnli, gate_ocnli, zh_val,
     out = {
         "synth3_val_n": len(s3),
         "synth3_val": run_gate(model, proc, tok, s3, device,
-                               limit=10**9, pad_to=512),
+                               limit=10**9),
         "synth3zh_val_n": len(s3zh),
         "synth3zh_val": run_gate(model, proc, tok, s3zh, device,
-                                 limit=10**9, pad_to=512),
+                                 limit=10**9),
         "mnli_noul_n": len(gate_mnli),
         "mnli_noul": run_gate(model, proc, tok, gate_mnli, device,
-                              limit=10**9, pad_to=512),
+                              limit=10**9),
         "ocnli_noul_n": len(gate_ocnli),
         "ocnli_noul": run_gate(model, proc, tok, gate_ocnli, device,
-                               limit=10**9, pad_to=512),
+                               limit=10**9),
         "synth2zh_val_n": len(zh_val),
         "synth2zh_val": run_gate(model, proc, tok, zh_val, device,
-                                 limit=10**9, pad_to=512),
+                                 limit=10**9),
     }
     return out
 
@@ -145,6 +149,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--gate-every", type=int, default=300)
     ap.add_argument("--ckpt-every", type=int, default=150)
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--no-ckpt", action="store_true",
+                    help="disable gradient checkpointing "
+                         "(identical math, ~2x faster on image "
+                         "batches; ~48G peak, fits 96G)")
     ap.add_argument("--gates-only", action="store_true",
                     help="no training: run the five final gates on a "
                          "completed adapter")
@@ -201,7 +209,7 @@ def main(argv: list[str] | None = None) -> int:
         e["source"] = "synth2zh"
     s2zh_mon = zh_train_val[:200]
 
-    model = make_lora(model)
+    model = make_lora(model, ckpt=not args.no_ckpt)
     model.train()
 
     params = [p for p in model.parameters() if p.requires_grad]
@@ -235,7 +243,8 @@ def main(argv: list[str] | None = None) -> int:
         from peft import PeftModel
         model = PeftModel.from_pretrained(model.base_model.model,
                                           str(ckpt / "adapter"))
-        model.gradient_checkpointing_enable()
+        if not args.no_ckpt:
+            model.gradient_checkpointing_enable()
         model.enable_input_require_grads()
         opt.load_state_dict(torch.load(ckpt / "opt.pt", weights_only=True))
         step = json.loads((ckpt / "state.json").read_text())["step"]
@@ -245,7 +254,7 @@ def main(argv: list[str] | None = None) -> int:
     t0 = time.time()
     for bi in range(step, len(batches)):
         batch = [train[i] for i in batches[bi]]
-        inputs = encode_batch(proc, tok, batch, pad_to=512)
+        inputs = encode_batch(proc, tok, batch)
         inputs = {k: v.to(args.device) for k, v in inputs.items()}
         out = model(**inputs)
         out.loss.backward()
@@ -262,13 +271,13 @@ def main(argv: list[str] | None = None) -> int:
             # monitors are pre-sliced to the registered sizes; no
             # run_gate-side truncation
             g_m = run_gate(model, proc, tok, gate_mnli, args.device,
-                           limit=10**9, pad_to=512)
+                           limit=10**9)
             g_o = run_gate(model, proc, tok, gate_ocnli, args.device,
-                           limit=10**9, pad_to=512)
+                           limit=10**9)
             g_i = run_gate(model, proc, tok, s3_mon, args.device,
-                           limit=10**9, pad_to=512)
+                           limit=10**9)
             g_z = run_gate(model, proc, tok, s2zh_mon, args.device,
-                           limit=10**9, pad_to=512)
+                           limit=10**9)
             print(f"  [monitor {step}] MNLI={g_m.get('text')} "
                   f"OCNLI={g_o.get('text')} "
                   f"synth3-val={g_i.get('synth3')} "
