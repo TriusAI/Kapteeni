@@ -512,3 +512,12 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   the image region so far, ~15s/step vs 24s checkpointed (recompute
   eliminated). Watcher armed for auto-relaunch if the unified-memory
   pool shrinks (desktop shares the 96G). ETA ~04:30.
+- 01:19 run4 (no-ckpt) OOM'd at ~step 1690: the unified-memory pool
+  went to 0 free (desktop shares the 96G; expandable_segments
+  mapping failed). ckpt-1650 survived; monitor 1500 still clean
+  (MNLI 0.86 / OCNLI 0.8867 / synth3-val 0.87 / synth2zh 0.84).
+- 04:48 run5: back to the PROVEN config (gradient checkpointing on,
+  natural widths, 21.5G peak — OOM-proof against desktop
+  fluctuation), resumed at 1650. The no-ckpt experiments bought
+  ~540 steps and cost two dead runs; the memory-hungry variant is
+  shelved for daytime use only. Remaining ~1,677 steps, ETA ~09:00.
