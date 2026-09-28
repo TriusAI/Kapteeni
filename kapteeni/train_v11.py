@@ -192,10 +192,12 @@ def main(argv: list[str] | None = None) -> int:
 
     # in-loop monitors exactly as pre-registered (not gates)
     s3_mon = [e for e in val if e["source"] == "synth3"][:300]
-    zh_train_val = [text_example(r, json.loads(
-        open("data_cache/synth2zh_criteria.json").read()))
-        for r in load_rows("data_cache/rows_synth2zh.jsonl")
-        if is_val(r["row_id"])]
+    crit2zh = json.loads(open("data_cache/synth2zh_criteria.json").read())
+    zh_train_val = [text_example(r, crit2zh)
+                    for r in load_rows("data_cache/rows_synth2zh.jsonl")
+                    if is_val(r["row_id"])]
+    for e in zh_train_val:
+        e["source"] = "synth2zh"
     s2zh_mon = zh_train_val[:200]
 
     model = make_lora(model)
@@ -256,10 +258,16 @@ def main(argv: list[str] | None = None) -> int:
                   f" (peak {mem:.1f}G)", flush=True)
             torch.cuda.reset_peak_memory_stats()
         if step % args.gate_every == 0:
-            g_m = run_gate(model, proc, tok, gate_mnli, args.device)
-            g_o = run_gate(model, proc, tok, gate_ocnli, args.device)
-            g_i = run_gate(model, proc, tok, s3_mon, args.device)
-            g_z = run_gate(model, proc, tok, s2zh_mon, args.device)
+            # monitors are pre-sliced to the registered sizes; no
+            # run_gate-side truncation
+            g_m = run_gate(model, proc, tok, gate_mnli, args.device,
+                           limit=10**9)
+            g_o = run_gate(model, proc, tok, gate_ocnli, args.device,
+                           limit=10**9)
+            g_i = run_gate(model, proc, tok, s3_mon, args.device,
+                           limit=10**9)
+            g_z = run_gate(model, proc, tok, s2zh_mon, args.device,
+                           limit=10**9)
             print(f"  [monitor {step}] MNLI={g_m.get('text')} "
                   f"OCNLI={g_o.get('text')} "
                   f"synth3-val={g_i.get('synth3')} "
