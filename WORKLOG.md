@@ -443,3 +443,37 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   (each = frozen − 1 binomial SE); synth2zh-val >= 0.90; fitted ECE
   <= 0.10 on combined held-out val. Fail -> no ship, next step is a
   new pre-reg (lower LR / narrower / modality-routed).
+
+## 2026-09-28 — v1.1 data + trainer built; pre-run engineering done
+
+- synth2zh (4,202 rows): the three synth2 skill families, Chinese
+  surfaces, gold logic imported from synth2 (shared invariants). State
+  keys stay English (wire identifiers, OCNLI convention); Chinese date
+  formats incl. weekday-styled; Chinese policy docs; Chinese criteria
+  descs. is_val split 403.
+- synth3zh (2,000 rows / 643 images): all 20 image families fully
+  Chinese — Noto Sans/Serif CJK renders (Style(zh=True); DejaVu default
+  unchanged so English synth3 regenerates byte-identical), Chinese
+  questions/criteria, zh-/synth3zh- id prefixes. QA: determinism
+  selfcheck, border-clip scan over all 643 images (0 hits), per-char
+  glyph check (0 missing), visual inspection of 10 layouts. Fixed en
+  route: seating row labels + bar-chart axis labels were left-clipped;
+  paperclip emoji -> plain 附件.pdf chip (Noto CJK has no emoji).
+- Contamination audit extended (CJK-aware tokens: alnum words + single
+  CJK chars, 8-token shingles — identical behavior on English): JevBench
+  231 items AND OCNLI 500 gate rows vs the full v1.1 mixture (28,804
+  surfaces, val excluded) — zero items with any overlap, both gates.
+- train_v11: mixture verified vs the pre-reg exactly (synth3 5,412 +
+  synth3zh 1,796 + EN replay 14,935 + synth2zh 3,799 = 25,942; val
+  590 + 204; MNLI/OCNLI slices n=150). LoRA r=32 attention-only
+  (6.29M trainable, 0.14%), lr 5e-5, budget 4096, image tokens
+  re-measured for Qwen3.5-4B: 399 per 640x640 render (the 400 constant
+  carries). --gates-only runs the five final gates post-run.
+- Pre-run smokes: peak memory 22.8G (96G box — ample); resume verified
+  in practice (picked up an aborted run's step-30 ckpt, adapter+opt+
+  step); monitor path exercised twice. Two defects caught and fixed:
+  synth2zh monitor source tag (printed None) and run_gate's default
+  limit=120 silently truncating monitors below registered sizes.
+- Full-run shape: 3,327 batches, ~11.0M real tokens. Monitors are trend
+  instruments; the fresh-LoRA numbers (MNLI~0.41, OCNLI~0.29) just mean
+  the answer convention isn't learned in the first dozen steps.
