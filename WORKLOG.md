@@ -477,3 +477,8 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
 - Full-run shape: 3,327 batches, ~11.0M real tokens. Monitors are trend
   instruments; the fresh-LoRA numbers (MNLI~0.41, OCNLI~0.29) just mean
   the answer convention isn't learned in the first dozen steps.
+- Gates-only plumbing verified on the throwaway 51-step smoke adapter
+  (all five slices render; MNLI already 0.8133 / synth3 0.7881 from
+  400 examples — trajectory, not a gate reading). Overnight v1.1 run
+  launched (3,327 batches, ~11.0M real tokens, monitors every 300
+  steps, ckpt+resume every 150).
