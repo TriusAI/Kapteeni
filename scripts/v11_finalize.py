@@ -55,6 +55,17 @@ def collect(model, proc, tok, examples, device) -> list[dict]:
                     images.append(ex["image"])
             inputs = proc(text=texts, images=images or None,
                           return_tensors="pt", padding=True)
+            if inputs["input_ids"].shape[1] < 512:
+                pad_id = tok.tokenizer.pad_token_id \
+                    or tok.tokenizer.eos_token_id
+                n, w = inputs["input_ids"].shape
+                for k in list(inputs):
+                    v = inputs[k]
+                    if v.ndim == 2 and v.shape[1] == w:
+                        fill = pad_id if k == "input_ids" else 0
+                        inputs[k] = torch.cat(
+                            [v, torch.full((n, 512 - w), fill,
+                                           dtype=v.dtype)], dim=1)
             inputs = {k: v.to(device) for k, v in inputs.items()}
             logits = model(**inputs).logits
             for j, ex in enumerate(batch):

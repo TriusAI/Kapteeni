@@ -100,11 +100,18 @@ def make_lora(model, r: int = 32, alpha: int = 64):
     return model
 
 
-def encode_batch(proc, tok, examples):
+def encode_batch(proc, tok, examples, pad_to: int | None = None):
     """Official batched processor call (placeholder expansion happens
     inside); answer supervision via a label placed at the first pad
     position of each row, whose logits come from that row's last real
-    token (the model's internal label shift)."""
+    token (the model's internal label shift).
+
+    pad_to: optionally pad every sequence to a FIXED width. Training
+    math is unchanged (pad tokens are masked; the label still sits at
+    each row's first real pad slot) but every batch then shares one
+    sequence shape — the Qwen3.5 GDN Triton kernels otherwise grind a
+    new shape search per distinct padded length (~45s/image batch on
+    this box; see the 2026-09-28 spike investigation)."""
     texts, images = [], []
     for ex in examples:
         content = ([{"type": "image", "image": ex["image"]}] if ex["image"]
@@ -118,6 +125,17 @@ def encode_batch(proc, tok, examples):
                   return_tensors="pt")
     if getattr(tok.tokenizer, "padding_side", "right") != "right":
         raise RuntimeError("this label placement assumes right padding")
+    pad_id = tok.tokenizer.pad_token_id or tok.tokenizer.eos_token_id
+    if pad_to is not None and inputs["input_ids"].shape[1] < pad_to:
+        n = inputs["input_ids"].shape[0]
+        w = inputs["input_ids"].shape[1]
+        for k in list(inputs):
+            v = inputs[k]
+            if v.ndim == 2 and v.shape[1] == w:
+                fill = pad_id if k == "input_ids" else 0
+                inputs[k] = torch.cat(
+                    [v, torch.full((n, pad_to - w), fill, dtype=v.dtype)],
+                    dim=1)
     labels = torch.full_like(inputs["input_ids"], -100)
     ans_ids = [tok.tokenizer.encode(ex["answer"],
                                     add_special_tokens=False)[0]
@@ -144,8 +162,9 @@ def encode_batch(proc, tok, examples):
 
 
 @torch.no_grad()
-def run_gate(model, proc, tok, examples, device, limit=120):
-    """Accuracy of the argmax readout on a gate slice."""
+def run_gate(model, proc, tok, examples, device, limit=120, pad_to=None):
+    """Accuracy of the argmax readout on a gate slice. pad_to: fixed
+    sequence width (same shape-stability rationale as encode_batch)."""
     model.eval()
     by = defaultdict(lambda: [0, 0])
     for i in range(0, min(limit, len(examples)), 8):
@@ -162,6 +181,16 @@ def run_gate(model, proc, tok, examples, device, limit=120):
                 images.append(ex["image"])
         inputs = proc(text=texts, images=images or None,
                       return_tensors="pt", padding=True)
+        if pad_to is not None and inputs["input_ids"].shape[1] < pad_to:
+            pad_id = tok.tokenizer.pad_token_id or tok.tokenizer.eos_token_id
+            n, w = inputs["input_ids"].shape
+            for k in list(inputs):
+                v = inputs[k]
+                if v.ndim == 2 and v.shape[1] == w:
+                    fill = pad_id if k == "input_ids" else 0
+                    inputs[k] = torch.cat(
+                        [v, torch.full((n, pad_to - w), fill,
+                                       dtype=v.dtype)], dim=1)
         inputs = {k: v.to(device) for k, v in inputs.items()}
         logits = model(**inputs).logits
         for j, ex in enumerate(batch):

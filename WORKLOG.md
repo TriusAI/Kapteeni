@@ -491,3 +491,17 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   lost). Relaunched 20:05 DETACHED (setsid+nohup -> /tmp/opencode/
   v11_run.log, pid 443869): resumed cleanly at step 600, loss 0.49 at
   step 620, peak 15.6G. ETA ~01:00-01:30.
+- 21:00 spike investigation (ckpt-1050 probe, no training): image
+  decisions intact (synth3-val[:120]=0.8917 — above frozen 0.8119);
+  train==eval CE rules out mode artifacts. Mass probe found the
+  mechanism: image CHOICE rows put 54% on the no-space letter id 32
+  (fresh-model line-start lettering) vs the supervised ' A' id 357 at
+  0.1% -> CE ~6.9, exactly the spike; text choice rows are 99.6% on
+  the with-space letter (converged during the text-first curriculum).
+  NOT divergence: the LoRA is aligning image rows to the wire answer
+  convention; argmax acc was never broken. Separate issue: image
+  batches ran ~3x slower than text (GDN chunked-scan recompute +
+  vision tower recompute under checkpointing). Fix: pad_to=512 in
+  encode_batch/run_gate/finalize — one sequence shape for every
+  sub-512 batch (pad tokens masked; training math identical). Relaunched
+  from ckpt-1050 at 22:07: image region ~11s/step. ETA ~03:00.

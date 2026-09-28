@@ -116,19 +116,20 @@ def final_gates(model, proc, tok, val, gate_mnli, gate_ocnli, zh_val,
     s3zh = [e for e in val if e["source"] == "synth3zh"]
     out = {
         "synth3_val_n": len(s3),
-        "synth3_val": run_gate(model, proc, tok, s3, device, limit=10**9),
+        "synth3_val": run_gate(model, proc, tok, s3, device,
+                               limit=10**9, pad_to=512),
         "synth3zh_val_n": len(s3zh),
         "synth3zh_val": run_gate(model, proc, tok, s3zh, device,
-                                 limit=10**9),
+                                 limit=10**9, pad_to=512),
         "mnli_noul_n": len(gate_mnli),
         "mnli_noul": run_gate(model, proc, tok, gate_mnli, device,
-                              limit=10**9),
+                              limit=10**9, pad_to=512),
         "ocnli_noul_n": len(gate_ocnli),
         "ocnli_noul": run_gate(model, proc, tok, gate_ocnli, device,
-                               limit=10**9),
+                               limit=10**9, pad_to=512),
         "synth2zh_val_n": len(zh_val),
         "synth2zh_val": run_gate(model, proc, tok, zh_val, device,
-                                 limit=10**9),
+                                 limit=10**9, pad_to=512),
     }
     return out
 
@@ -244,7 +245,7 @@ def main(argv: list[str] | None = None) -> int:
     t0 = time.time()
     for bi in range(step, len(batches)):
         batch = [train[i] for i in batches[bi]]
-        inputs = encode_batch(proc, tok, batch)
+        inputs = encode_batch(proc, tok, batch, pad_to=512)
         inputs = {k: v.to(args.device) for k, v in inputs.items()}
         out = model(**inputs)
         out.loss.backward()
@@ -261,13 +262,13 @@ def main(argv: list[str] | None = None) -> int:
             # monitors are pre-sliced to the registered sizes; no
             # run_gate-side truncation
             g_m = run_gate(model, proc, tok, gate_mnli, args.device,
-                           limit=10**9)
+                           limit=10**9, pad_to=512)
             g_o = run_gate(model, proc, tok, gate_ocnli, args.device,
-                           limit=10**9)
+                           limit=10**9, pad_to=512)
             g_i = run_gate(model, proc, tok, s3_mon, args.device,
-                           limit=10**9)
+                           limit=10**9, pad_to=512)
             g_z = run_gate(model, proc, tok, s2zh_mon, args.device,
-                           limit=10**9)
+                           limit=10**9, pad_to=512)
             print(f"  [monitor {step}] MNLI={g_m.get('text')} "
                   f"OCNLI={g_o.get('text')} "
                   f"synth3-val={g_i.get('synth3')} "
