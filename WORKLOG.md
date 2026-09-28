@@ -482,3 +482,12 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   400 examples — trajectory, not a gate reading). Overnight v1.1 run
   launched (3,327 batches, ~11.0M real tokens, monitors every 300
   steps, ckpt+resume every 150).
+- 08:34 first overnight attempt: reached step 600 (ckpt 09:32), then
+  died silently after 09:32 — no reboot, no journal/OOM trace; the
+  opencode background-shell record itself was lost (no output file,
+  no completion notification), so the harness likely killed the child
+  process group. Cause unknown, diagnostics from steps 300/600 lost
+  with the log (monitors are trend instruments only — no gate data
+  lost). Relaunched 20:05 DETACHED (setsid+nohup -> /tmp/opencode/
+  v11_run.log, pid 443869): resumed cleanly at step 600, loss 0.49 at
+  step 620, peak 15.6G. ETA ~01:00-01:30.
