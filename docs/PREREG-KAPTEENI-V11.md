@@ -225,3 +225,39 @@ frozen backbone, images through the adapter).
 No training or constant selection on any benchmark's items (MNLI,
 OCNLI, synth3 val, imajev-bench, JevBench); no gates adjusted after
 results; one run per candidate recipe; honest negatives documented.
+## Outcome (2026-09-29) — NEGATIVE: no ship
+
+One run. Final gates on the completed adapter (full slices):
+
+| gate | result | requirement | verdict |
+|---|---|---|---|
+| synth3-val (n=590) | 0.8881 | > 0.8068 | PASS |
+| MNLI-noul (n=150) | 0.86 | >= 0.84 | PASS |
+| OCNLI-noul (n=150) | 0.8867 | >= 0.83 | PASS |
+| synth2zh-val (n=403) | 0.7767 | >= 0.90 | **FAIL** |
+| fitted ECE | not fit | <= 0.10 | moot (gate already failed) |
+
+In-loop monitor trend (every 300 steps): MNLI/OCNLI/synth3-val
+remarkably stable from step 900 to 3327 (0.86 / 0.8867 / 0.87);
+synth2zh-val flat at 0.84 on its [:200] slice (generation-ordered,
+temporal-heavy) — the full 403-row slice reads 0.7767, so the deficit
+sits in the later families.
+
+Diagnosis (data_cache/v11_synth2_diagnosis.json): the same weakness
+appears on the synth2-EN val (n=609): v1.1 0.775, V2 adapter 0.7373
+(the FAILED quota-replay recipe; WORSE than v1.1) — replicated across
+backbone (Qwen3.5 vs Qwen3-VL), LoRA footprint (attention-only vs
+all-projection), and LR (5e-5 vs 1e-4). long_policy/score = 0.32 vs
+0.25 chance on BOTH adapters (a shared blind spot). Conclusion: the
+single-epoch unified replay cannot reconstitute the synthetic rule
+skills the original multi-phase curriculum taught (v1's synth2-heavy
+phases); capacity and LR are ruled out as discriminators. The zh
+transfer itself is HEALTHY: synth2zh (0.7767) >= synth2-EN (0.775)
+on the same skill families, and OCNLI (0.8867) beats MNLI (0.86).
+
+Also recorded (engineering): two mid-run restarts (harness killed the
+first overnight process; a no-checkpoint variant OOM'd when the
+unified-memory pool shrank); fixed-width padding hypothesis
+disproven; the loss spike at the image-region transition is convention
+alignment, not divergence (image decisions stayed intact throughout,
+synth3-val 0.87 -> final 0.8881).
