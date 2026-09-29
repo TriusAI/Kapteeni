@@ -15,14 +15,14 @@
   "val_rows_excluded": true,
   "jevbench": {
     "gate_items": 231,
-    "training_rows": 28804,
+    "training_rows": 35804,
     "items_with_hits": 0,
     "total_shingle_hits": 0,
     "hits": {}
   },
   "ocnli": {
     "gate_items": 500,
-    "training_rows": 28804,
+    "training_rows": 35804,
     "items_with_hits": 0,
     "total_shingle_hits": 0,
     "hits": {}
