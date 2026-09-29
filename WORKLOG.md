@@ -539,3 +539,52 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   synth2 mastery). Remaining mechanism: the v1 phase curriculum on
   the multimodal base (a build) — or park. User decision pending.
 - GPU free; text servers still down pending the decision.
+
+## 2026-09-30 — v1.1c opened: the v1 phase curriculum port (user decision)
+
+- User decision on the parked multimodal arc: pursue the remaining
+  documented mechanism — port the v1 phase pipeline (multi-pass per-
+  option judgment, distillation-weighted soft targets, group-CE/level
+  BCE in-loss, tiny per-primitive heads on h_last, P1 heads -> P2
+  LoRA+heads joint) to Qwen3.5-4B. Modality-routed serving was offered
+  and declined in favor of the unified-mechanism test.
+- Pre-registered BEFORE any measurement: docs/PREREG-KAPTEENI-V11C.md.
+  Gates identical to v1.1b's table (synth3 > 0.8068, MNLI >= 0.84,
+  OCNLI >= 0.83, synth2zh >= 0.90, synth2-EN >= 0.90, fitted ECE
+  <= 0.10). Data: the v1.2 union REUSED BYTE-IDENTICAL
+  (passes_p2.jsonl + passes_synth2.jsonl, incl. the goemo/synth rows
+  the lettered line never used) + NEW multi-pass expansions of
+  synth2zh and the synth3/synth3zh image families (image attached to
+  every pass of a row — the mechanism's cost: 399 vision tokens/pass).
+  v1.2's exact recipe: LoRA r=32/α=64 all 7 language-model projections
+  (tower frozen), lr 1e-4, budget 8192, 1 epoch, warmup+cosine; v0's
+  exact head training (40/12/30 epochs, lr 1e-3) in P1. Honest risk
+  stated up front: nothing has ever measured >= 0.90 on the full
+  synth2 val, including the pipeline being ported.
+- Build (committed): kapteeni/v11c.py (pass builders, chat-template VL
+  encode, h_last extraction, heads readout), v11c_precompute.py
+  (frozen-feature precompute, incremental shards + resume),
+  train_v11c.py (--phase1/--p2/--gates-only), scripts/chain_v11c.sh,
+  10 new tests (full suite 163 green).
+- Engineering smokes (pre-registered engineering, not gate
+  measurement): h_last through Qwen3_5Model with images (batch 8
+  optimal: text 11.6 pass/s, image 1.5 — bigger batches slower);
+  LoRA targets verified (128 language-model projections, 42.5M params,
+  tower excluded); image-grad probe peak 16.0G at budget 8192;
+  limit-120 P2 smoke exercised train loop + monitor round through the
+  heads readout on real slices + ckpt; resume verified live — and
+  caught a REAL BUG: v1.1b's resume-skip condition (base + bi < step)
+  is wrong under the v1.2 shuffled batch order (bi is a cost-sorted
+  index, not the training counter) — fixed with an explicit iteration
+  counter and re-verified.
+- Contamination audit extended to the v1.1c mixture (adds goemotions
+  + synth surfaces; 35,804 training rows vs JevBench 231 + OCNLI 500):
+  zero 8-token overlaps, both gates. docs/contamination_audit.json.
+- Full-run shape: P1 precompute 95,484 passes (75,829 train incl.
+  19,374 image + 19,655 val; ~6h at measured rates) -> P1 heads
+  (minutes) -> P2 ~21M real tokens (~10-14h + ~1.5h of monitor
+  rounds; ~1,900 batches). Chain launched detached
+  (scripts/chain_v11c.sh -> /tmp/opencode/v11c_*.log), ETA for the
+  final gates roughly 18-22h from launch. Monitors every 300 steps to
+  data_cache/v11c_monitors.jsonl; abort rule + 150-step ckpt/resume
+  armed. The gates run ONCE on the completed model.
