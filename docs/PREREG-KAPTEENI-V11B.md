@@ -22,8 +22,10 @@ do not, the volume hypothesis is dead and the unified arc's verdict is
 - **Warm start**: the saved v1.1 adapter (3,327 steps; gates 1-3
   already passing on it — re-measured at the end, never assumed).
 - **2 additional epochs**, each containing ONLY:
-  - synth2-EN non-val (10,346 rows) + synth2-zh non-val (3,799 rows),
-    shuffled together.
+  - synth2-EN non-val (5,691 rows) + synth2-zh non-val (3,799 rows),
+    shuffled together — 9,490 rows per epoch (verified counts; the
+    v1.1 build_examples 'text' source 14,935 = five-source replay
+    9,244 + synth2-EN 5,691).
   - No image rows, no NLI/classification replay, no new data, no
     distillation changes. Rationale: v1.1's monitors stayed perfectly
     stable through a full mixed epoch (zero erosion), so pure-synth2
