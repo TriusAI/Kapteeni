@@ -345,9 +345,12 @@ def p2(args) -> int:
     for ep in range(args.epochs):
         rng = torch.Generator().manual_seed(args.seed + ep)
         order = torch.randperm(len(batches), generator=rng).tolist()
-        for bi in order:
-            if base + bi < step:
-                continue  # already done before the resume point
+        it = 0  # batches CONSUMED this epoch (shuffled order; the resume
+        for bi in order:  # point is the first `step` of them, in order)
+            if base + it < step:
+                it += 1
+                continue  # already trained before the resume point
+            it += 1
             batch = batches[bi]
             flat = [{"text": t, "image": r["image"]}
                     for r in batch for t in r["texts"]]
