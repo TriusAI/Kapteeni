@@ -76,16 +76,17 @@ def load_bench() -> dict[str, set]:
 
 
 def load_training() -> dict[str, set]:
-    """row_id -> shingles of the v1.1 training surface.
+    """row_id -> shingles of the training surface.
 
-    Sources per PREREG-KAPTEENI-V11: the six English replay sources
-    (boolq, fever, banking77, clinc150, helpsteer2, synth2) at full
-    non-val volume, synth2zh, and the two image datasets (synth3,
-    synth3zh). Val rows are excluded — they are held out, not trained.
+    Sources per PREREG-KAPTEENI-V11 (the v1.1 mixture: the six English
+    replay sources at full non-val volume, synth2zh, and the two image
+    datasets) PLUS the v1.1c additions per PREREG-KAPTEENI-V11C: the
+    goemotions and synth rows that enter through the reused v1.2 text
+    union (passes_p2). Val rows are excluded — held out, not trained.
     """
     out: dict[str, set] = {}
     for name in ("boolq", "fever", "banking77", "clinc150", "helpsteer2",
-                 "synth2", "synth2zh"):
+                 "synth2", "synth2zh", "goemotions", "synth"):
         for line in open(ROOT / f"data_cache/rows_{name}.jsonl",
                          encoding="utf-8"):
             r = json.loads(line)
