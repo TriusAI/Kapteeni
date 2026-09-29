@@ -145,6 +145,7 @@ def main(argv: list[str] | None = None) -> int:
         from transformers import AutoModelForImageTextToText, AutoProcessor
         from peft import PeftModel
         proc = AutoProcessor.from_pretrained(args.base)
+        tok = proc
         model = AutoModelForImageTextToText.from_pretrained(
             args.base, dtype=torch.bfloat16).to(args.device)
         model = PeftModel.from_pretrained(model, args.adapter)
