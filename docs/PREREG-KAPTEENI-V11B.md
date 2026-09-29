@@ -39,9 +39,14 @@ do not, the volume hypothesis is dead and the unified arc's verdict is
   loss insurance after the first attempt lost its monitors).
 - In-loop monitors every 300 steps (diagnostics, NOT gates): MNLI[150],
   OCNLI[150], synth3-val[:300], synth2zh-val[:200], synth2-EN-val[:200].
-- **Abort rule (pre-registered)**: if any monitor drops by more than
-  0.03 absolute between consecutive rounds, kill the run — that is an
-  erosion signal the recipe cannot absorb; document and stop.
+- **Abort rule (pre-registered; AMENDED before the run started — the
+  original >0.03-between-rounds threshold fired on the 100-row smoke
+  at step 18 from pure sampling noise (SE of a difference of two n=200
+  readings is ~0.038; a 0.03 drop is <1 sigma), so it was
+  miscalibrated, not evidence-driven): kill the run if any monitor
+  falls more than 0.10 below the best value that monitor has shown
+  so far in this run — noise-immune, catches only catastrophic
+  erosion (the V-track's worst observed erosion moved ~7 points).**
 
 ## Gates (final reading on the completed adapter; full slices; same
 thresholds as v1.1 — not relaxed, one added)

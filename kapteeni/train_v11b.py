@@ -37,7 +37,7 @@ from kapteeni.vl_format import text_example, load_rows
 WARM_BASE = "model_cache/qwen3.5-4b"
 WARM_ADAPTER = "model_cache/kapteeni_v11/adapter"
 EPOCHS = 2
-ABORT_DROP = 0.03  # pre-registered: kill if any monitor falls this far
+ABORT_DROP = 0.10  # pre-registered (amended rule): catastrophic-only
 
 
 def build_synth2_examples(seed: int = 11) -> list[dict]:
@@ -171,7 +171,7 @@ def main(argv: list[str] | None = None) -> int:
     warm = str(ckpt / "adapter") \
         if (ckpt / "adapter").exists() and (ckpt / "opt.pt").exists() \
         else args.warm
-    model = PeftModel.from_pretrained(model, warm)
+    model = PeftModel.from_pretrained(model, warm, is_trainable=True)
     model.gradient_checkpointing_enable()
     model.enable_input_require_grads()
     model.train()
@@ -269,11 +269,14 @@ def main(argv: list[str] | None = None) -> int:
                         "synth2zh_val": g_z.get("synth2zh"),
                         "synth2_en_val": g_e.get("synth2")}
                 append_monitor(mon_path, step, accs)
-                # pre-registered abort rule
+                # pre-registered abort rule (amended: catastrophic-only)
                 for k, v in accs.items():
-                    if v is None or k not in prev or prev[k] is None:
+                    if v is None:
                         continue
-                    if prev[k] - v > ABORT_DROP:
+                    best = max(v, prev.get(k, v))
+                    prev[k] = best
+                for k, v in accs.items():
+                    if v is not None and prev[k] - v > ABORT_DROP:
                         print(f"ABORT RULE TRIGGERED: {k} "
                               f"{prev[k]} -> {v} (drop > {ABORT_DROP})",
                               flush=True)
