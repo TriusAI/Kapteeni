@@ -521,3 +521,21 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   fluctuation), resumed at 1650. The no-ckpt experiments bought
   ~540 steps and cost two dead runs; the memory-hungry variant is
   shelved for daytime use only. Remaining ~1,677 steps, ETA ~09:00.
+## 2026-09-29 evening — v1.1b: NEGATIVE (no ship); unified-arc verdict
+
+- b-run: 1,802 steps (2 synth2-only epochs on the v1.1 adapter), monitors
+  in data_cache/v11b_monitors.jsonl (the log-loss insurance paid off —
+  clean 6-round history). Gates: synth3-val 0.8729 and OCNLI 0.8533
+  PASS; MNLI 0.82 FAIL (eroded from 0.86 under synth2-only pressure);
+  synth2zh 0.8462 / synth2-EN 0.8407 FAIL (mastery bar 0.90).
+- The trend is the result: skills climbed (+7 ZH / +6.6 EN), peaked
+  mid-run (0.895 / 0.845 at step ~1200), then DECLINED as epoch-2
+  memorization capped (final loss 0.0002) — plateau ~15 points short
+  of mastery while NLI gates eroded. Note the monitors also caught an
+  abort-rule near-miss worth having survived: MNLI's step-900 dip was
+  1 sigma noise; the amended catastrophic-only rule behaved correctly
+  throughout.
+- Volume mechanism spent (4 unified runs now top out 0.82-0.85 on
+  synth2 mastery). Remaining mechanism: the v1 phase curriculum on
+  the multimodal base (a build) — or park. User decision pending.
+- GPU free; text servers still down pending the decision.

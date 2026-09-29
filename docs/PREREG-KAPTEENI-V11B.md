@@ -77,3 +77,30 @@ OCNLI, synth3 val, imajev-bench, JevBench); no gates adjusted after
 results; one run per candidate recipe; honest negatives documented.
 Contamination: datasets unchanged from v1.1 (the extended audit's zero
 hits carry over); val slices never trained on.
+
+## Outcome (2026-09-29, ~22:35) — NEGATIVE: no ship
+
+One run (1,802 steps = 2 synth2-only epochs on the v1.1 adapter;
+monitor history data_cache/v11b_monitors.jsonl). Final gates (full
+slices): synth3-val 0.8729 PASS; OCNLI 0.8533 PASS; **MNLI 0.82 FAIL**
+(gate 0.84; eroded from the warm start's 0.86 under pure-synth2
+pressure); **synth2zh 0.8462 FAIL**; **synth2-EN 0.8407 FAIL**;
+fitted ECE moot.
+
+The volume hypothesis is FALSIFIED as the fix: +2 epochs lifted both
+skill gates substantially (+7.0 ZH, +6.6 EN — real, monitor-confirmed
+climbs that peaked mid-run at 0.895 / 0.845 around step 1200) and then
+DECLINED as epoch-2 memorization took over (final train loss 0.0002;
+the late-round monitors reversed: synth2zh 0.895 -> 0.86, EN 0.845 ->
+0.80). The plateau sits ~15 points below the mastery bar, and the same
+pressure that lifts the skills erodes the NLI gates (MNLI 0.86 ->
+0.82; OCNLI 0.8867 -> 0.8533). Cross-check: the four unified-track
+runs to date (v1.2, V2, v1.1, v1.1b) top out at 0.82-0.85 on synth2
+mastery under every replay/epoch variation tried; the v1 phase
+pipeline (multi-pass, distillation-heavy) is the only configuration
+that has reached mastery on these families.
+
+Per the decision rule: the "more volume" mechanism is spent; the
+remaining genuinely-different mechanism on the table is porting the
+v1 phase curriculum (synth2-heavy phases with distillation) to the
+multimodal base — a build decision, not a recipe tweak.
