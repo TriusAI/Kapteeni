@@ -261,6 +261,17 @@ def load_model(args, trainable: bool):
         from peft import PeftModel
         model = PeftModel.from_pretrained(model, args.adapter)
         model.eval()
+    # Numerical-stabilization fix (2026-09-30 NaN diagnosis, see the
+    # pre-reg's ENGINEERING NOTE): the bf16 vision tower produces
+    # non-finite embeds on borderline image batches under training-mode
+    # perturbation (reproduced twice, localized to the tower output; the
+    # frozen-feature precompute and every eval-mode forward are finite).
+    # The tower runs in fp32 (the multimodal merge casts inputs to the
+    # tower's dtype and its fp32 embeds flow back into the bf16 stream);
+    # the LM stays bf16. Full-fp32 also clears the repro but costs ~2x.
+    inner = _inner_of(model)
+    if hasattr(inner, "visual"):
+        inner.visual.float()
     return model, proc, proc
 
 
@@ -334,6 +345,8 @@ def p2(args) -> int:
     mon_path = Path("data_cache/v11c_monitors.jsonl")
     best: dict[str, float] = {}
     t0, done_tok, base = time.time(), 0, 0
+    n_skip = 0  # non-finite-h batches skipped (backstop; expect 0 with the
+    # fp32 tower; > 20 aborts — see the pre-reg ENGINEERING NOTE)
 
     def save_ckpt():
         model.save_pretrained(str(ckpt / "adapter"))
@@ -355,6 +368,16 @@ def p2(args) -> int:
             flat = [{"text": t, "image": r["image"]}
                     for r in batch for t in r["texts"]]
             h = forward_h(inner, proc, tok, flat, args.device)
+            if not bool(torch.isfinite(h).all()):
+                n_skip += 1
+                print(f"  step {step + 1}: SKIP batch {bi} "
+                      f"(non-finite h; skip {n_skip})", flush=True)
+                opt.zero_grad(set_to_none=True)
+                if n_skip > 20:
+                    print("ABORT: > 20 non-finite batches", flush=True)
+                    save_ckpt()
+                    return 1
+                continue
             loss = row_loss(heads[batch[0]["qtype"]], h, batch, args.device)
             opt.zero_grad(set_to_none=True)
             loss.backward()

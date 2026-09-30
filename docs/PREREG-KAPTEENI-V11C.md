@@ -155,3 +155,33 @@ one run per candidate recipe; honest negatives documented. Contamination:
 the v1.1 audit's zero hits carry over for the shared mixture; the
 goemo/synth addition is audited before training; val slices never
 trained on.
+
+## ENGINEERING NOTE (2026-09-30, added before any completed run; the
+## NaN-casualty attempt never completed and is documented below)
+
+The first P2 launch died at step 20 with loss NaN. Diagnosis (probes
+committed as WORKLOG log entries): the **bf16 vision tower produces
+non-finite embeds** on borderline image batches under training-mode
+perturbation — reproduced twice at the same seeded batch (a
+6-level weather-forecast score batch, each image repeated 6x in the
+forward, a composition unique to the multi-pass mechanism), localized
+to the tower output (everything downstream NaN from layer 0); the
+frozen-feature precompute (95,484 passes) is 100% finite, as is every
+eval-mode forward and single-pass forward; a fresh model can also be
+tipped by batched identical sequences, and fp32-accumulation matmul
+knobs do NOT clear it — the base's bf16 tower sits numerically marginal
+on this content. Fixes applied, verified on the exact repro (tower
+output finite, batch trains, 40 clean steps):
+
+1. **The vision tower runs in fp32** (the multimodal merge already
+   casts pixel inputs to the tower's dtype; its fp32 embeds flow back
+   into the bf16 stream). The LM stays bf16. Full-fp32 also clears the
+   repro but costs ~2x — not taken.
+2. **Backstop skip-guard**: any batch whose forward yields non-finite
+   h_last is skipped (no optimizer step), logged, and counted; > 20
+   skips abort the run. Expected count with the fp32 tower: 0.
+
+These are stack-numerics repairs of the instrument, not recipe changes:
+LoRA config, data, losses, lr, budget, gates and decision rule are
+exactly as pre-registered above. The NaN casualty never reached a
+checkpoint or monitor round and is not a run of record.
