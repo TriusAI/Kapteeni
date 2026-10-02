@@ -234,6 +234,39 @@
             response also carries a <code>usage</code> object: input = state +
             questions, output = serialized answers; token counts are from our
             tokenizer (documented divergence in accounting, not semantics).</p>
+
+          <h3>With an image — a real case (<code>menu-en</code>, from the shipped demo)</h3>
+          <figure class="figure">
+            <pre><code>{
+  "state": {"image": "&lt;base64 PNG — at most 8 MiB decoded bytes&gt;",
+             "note": "A cafe menu."},
+  "model": "kapteeni-v1.1c",
+  "questions": {
+    "priciest": {"type": "choice",
+                  "instructions": "Which drink is the most expensive?",
+                  "criteria": {"Americano": null, "Cappuccino": null,
+                                "Chai Latte": null, "Flat White": null,
+                                "Latte": null, "Macchiato": null}},
+    "cheapest": {"type": "choice",
+                  "instructions": "Which drink is the cheapest?",
+                  "criteria": {"Americano": null, "Cappuccino": null,
+                                "Chai Latte": null, "Flat White": null,
+                                "Latte": null, "Macchiato": null}},
+    "price_gate": {"type": "noul",
+                    "instructions": "Does the Macchiato cost more than $4.00?",
+                    "criteria": {"true": "the price is above the threshold",
+                                  "false": "the price is not above it"}}
+  }
+}</code></pre>
+            <figcaption>Case <code>menu-en</code> from the shipped demo page
+              (<code>kapteeni/demo/cases.json</code>): one image, three
+              independent questions — two choice, one noul — each forwarded on
+              its own with the image re-attached. The demo's gold annotations:
+              priciest = Flat White, cheapest = Latte,
+              price_gate = yes. Serve <code>kapteeni-v1.1c</code> and open the
+              server root to run it and see the distributions rendered next to
+              the gold.</figcaption>
+          </figure>
         </section>
 
         <section class="doc-section" id="confidence">

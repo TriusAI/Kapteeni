@@ -33,8 +33,9 @@
             returns <em>calibrated probability distributions your code can branch
             on</em>. It generates no text. The reference behavior is the TypeSafe
             System One API (<a href="https://docs.typesafe.ai">Jev</a>); Kapteeni
-            reimplements it end-to-end on local hardware — a frozen
-            Qwen3-4B-Instruct-2507 backbone with trained readout heads.</p>
+            reimplements it end-to-end on local hardware — a frozen 4B backbone
+            with trained readout heads: Qwen3-4B-Instruct-2507 on the text
+            line, Qwen3.5-4B on the multimodal line (images and Chinese).</p>
           <p class="body-copy">Status: <em>two shipped lines.</em> The text
             flagship — <em>kapteeni-v1-meticulous</em> (the default; conservative
             confidence for unknown traffic) and <em>kapteeni-v1-intuit</em>
@@ -99,6 +100,13 @@
             in <a href="https://github.com/TriusAI/Kapteeni/blob/main/docs/JEVBENCH.md">JEVBENCH.md</a>.
             Rather than discard the best-deciding artifacts, they ship as
             -intuit with honest guidance about when to prefer them.</p>
+          <h3>Download the text line</h3>
+          <p><a href="https://huggingface.co/TriusAI/kapteeni-v1-meticulous">kapteeni-v1-meticulous</a>
+            and <a href="https://huggingface.co/TriusAI/kapteeni-v1-intuit">kapteeni-v1-intuit</a>
+            are live on Hugging Face as self-contained distribution packs —
+            merged model, heads, serving constants, model card; nothing needs
+            to be trained or merged locally to serve them. All three published
+            models are gathered in <a href="#models">&#167;&#8202;7</a>.</p>
         </section>
 
         <section class="doc-section" id="multimodal">
@@ -144,13 +152,11 @@
             serving constants — per-primitive temperatures fitted on combined
             held-out val — are the only constants fitted anywhere in the
             line.</p>
-          <h3>Published</h3>
-          <p><a href="https://huggingface.co/TriusAI/kapteeni-v1.1c">huggingface.co/TriusAI/kapteeni-v1.1c</a>
-            — the 2026-10-02 distribution pack: merged model, heads, fitted
-            constants, model card, serving package + demo website; pinned at
-            revision <code>17affb8</code> (cite the pin; repo main may advance
-            past it for card and doc updates only); weights CC BY-SA 4.0,
-            code/generators Apache-2.0.</p>
+          <p>Published pinned at revision <code>17affb8</code> — cite the pin;
+            repo main may advance past it for card-text and doc updates only
+            (weights and serving constants are frozen at the snapshot). The
+            pack contents and download links are gathered in
+            <a href="#models">&#167;&#8202;7</a>.</p>
           <h3>Demo website</h3>
           <p>The v1.1c server ships a self-contained, same-origin demo page
             (open the server root): 15 pre-configured cases — nine generated
@@ -249,8 +255,31 @@ curl localhost:8000/v1/systemone -d '{"state":"...","model":"jev-latest","questi
             answer shapes are on the <a href="api.html">Wire API</a> page.</p>
         </section>
 
+        <section class="doc-section" id="models">
+          <h2><span class="sec-no">&#167;&#8202;7</span>Models on Hugging Face</h2>
+          <p>All three shipped on the
+            <a href="https://huggingface.co/TriusAI">TriusAI</a> org:</p>
+          <div class="table-scroll">
+            <table class="data">
+              <caption>The multimodal pack (2026-10-02) additionally carries the
+                serving package and the self-contained demo website. Weights
+                CC BY-SA 4.0, code/generators Apache-2.0, on every pack. The
+                publishing workflow:
+                <a href="https://github.com/TriusAI/Kapteeni/blob/main/docs/PUBLISH-HF.md">PUBLISH-HF.md</a>.</caption>
+              <thead>
+                <tr><th>Model</th><th>Line</th><th>Download</th><th>Note</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>kapteeni-v1-meticulous</td><td>text — Qwen3-4B-Instruct-2507</td><td><a href="https://huggingface.co/TriusAI/kapteeni-v1-meticulous">huggingface.co/TriusAI/kapteeni-v1-meticulous</a></td><td>the default; conservative confidence</td></tr>
+                <tr><td>kapteeni-v1-intuit</td><td>text — Qwen3-4B-Instruct-2507</td><td><a href="https://huggingface.co/TriusAI/kapteeni-v1-intuit">huggingface.co/TriusAI/kapteeni-v1-intuit</a></td><td>sharper on well-formed numeric, temporal, and multi-step traffic</td></tr>
+                <tr><td>kapteeni-v1.1c</td><td>multimodal — Qwen3.5-4B; images + en/zh</td><td><a href="https://huggingface.co/TriusAI/kapteeni-v1.1c">huggingface.co/TriusAI/kapteeni-v1.1c</a></td><td>pinned at <code>17affb8</code> — cite the pin</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
         <section class="doc-section" id="layout">
-          <h2><span class="sec-no">&#167;&#8202;7</span>Repository layout</h2>
+          <h2><span class="sec-no">&#167;&#8202;8</span>Repository layout</h2>
           <ul class="modules">
             <li><span class="mod">kapteeni/contract.py</span><span class="mod-desc">the wire format as executable code — validation, answer shaping, confidence, exact-1 probability sums</span></li>
             <li><span class="mod">kapteeni/serialize.py</span><span class="mod-desc">pass serialization (state JSON text + <code>[noul]</code>/<code>[choice]</code>/<code>[score]</code> suffixes; ids never serialized)</span></li>
@@ -270,7 +299,7 @@ curl localhost:8000/v1/systemone -d '{"state":"...","model":"jev-latest","questi
         </section>
 
         <section class="doc-section" id="license">
-          <h2><span class="sec-no">&#167;&#8202;8</span>License</h2>
+          <h2><span class="sec-no">&#167;&#8202;9</span>License</h2>
           <ul>
             <li><strong>Code, docs, generators:</strong> Apache-2.0
               (<a href="https://github.com/TriusAI/Kapteeni/blob/main/LICENSE">LICENSE</a>)
