@@ -103,6 +103,9 @@ class MockV11C:
                 answers[qid] = contract.score_answer(scores, q["criteria"])
         in_tok = len(st) // 4 + sum(
             len(instructions_text(q["instructions"])) // 4
-            for q in questions.values()) + (399 if img is not None else 0)
+            for q in questions.values())
+        from kapteeni.model_v11c import vision_tokens
+        if img is not None:
+            in_tok += vision_tokens(img.width, img.height)
         out_tok = len(json.dumps(answers)) // 4
         return answers, {"input_tokens": in_tok, "output_tokens": out_tok}

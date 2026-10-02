@@ -661,3 +661,12 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   shown. Latency: 0.2-19s per request on the iGPU box (per-question
   forwards; image questions ~4-7s). README updated with the v1.1c
   section + demo run instructions.
+- Image-size ergonomics (same day): measured the limits — 8 MiB wire
+  cap, ~16.78 MP processor budget (~16.3k vision tokens max, anchored
+  to measured grids in kapteeni.model_v11c.vision_tokens); the demo's
+  *attach your own image* picker now auto-downscales to the validated
+  640px distribution client-side, oversized requests get an advisory
+  `notice` with the computed per-pass token cost, and
+  usage.input_tokens counts real image tokens (the flat 399 training
+  constant was only correct for 640x640). 3 new tests (167 green);
+  notice path verified live through the mock server.

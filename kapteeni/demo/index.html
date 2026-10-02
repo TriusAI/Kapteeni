@@ -67,6 +67,9 @@ textarea { width: 100%; height: 17rem; font-family: var(--mono); font-size: .8re
 textarea:focus { outline: 2px solid var(--accent); }
 .status { font-size: .84rem; color: var(--gray); margin: .5rem 0; min-height: 1.2em; }
 .status.err { color: #8a2e2e; }
+.attach { display: inline-block; margin-left: .8rem; font-size: .84rem;
+  color: var(--accent); cursor: pointer; border-bottom: 1px dotted var(--accent); }
+.attach:hover { color: var(--ink); }
 /* — answers — */
 .ans { border-bottom: 1px solid var(--rule-light); padding: .8rem 0; }
 .ans .qid { font-family: var(--mono); font-size: .8rem; color: var(--gray); }
@@ -116,6 +119,9 @@ generators; gold answers are exact by construction</span></h2>
   <div>
     <div class="caseview" id="caseview"></div>
     <button id="send">ask the model</button>
+    <label class="attach" for="own">…or attach your own image
+      <input type="file" id="own" accept="image/png,image/jpeg" hidden>
+    </label>
     <div class="status" id="status"></div>
     <div class="how">Wire format: <code>POST /v1/systemone</code>. The
     <code>state.image</code> field carries base64 PNG/JPEG; question types
@@ -278,6 +284,58 @@ function render(answers) {
     out.appendChild(div);
   }
 }
+
+// — attach your own image: auto-downscale to the validated 640px
+// distribution before it ever hits the wire (quality AND latency —
+// a 12 MP photo would otherwise cost ~70k vision tokens per question).
+const VALIDATED_EDGE = 640;
+
+$("own").onchange = async () => {
+  const f = $("own").files[0];
+  if (!f) return;
+  const st = $("status");
+  st.className = "status";
+  try {
+    const dataUrl = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result);
+      r.onerror = rej;
+      r.readAsDataURL(f);
+    });
+    const img = await new Promise((res, rej) => {
+      const i = new Image();
+      i.onload = () => res(i);
+      i.onerror = rej;
+      i.src = dataUrl;
+    });
+    let w = img.naturalWidth, h = img.naturalHeight;
+    if (Math.max(w, h) > VALIDATED_EDGE) {
+      const s = VALIDATED_EDGE / Math.max(w, h);
+      w = Math.round(w * s); h = Math.round(h * s);
+    }
+    const cv = document.createElement("canvas");
+    cv.width = w; cv.height = h;
+    const cx = cv.getContext("2d");
+    cx.imageSmoothingQuality = "high";
+    cx.drawImage(img, 0, 0, w, h);
+    const b64 = cv.toDataURL("image/png").split(",")[1];
+    const req = JSON.parse($("req").value);
+    if (typeof req.state !== "object" || req.state === null ||
+        Array.isArray(req.state)) {
+      req.state = {note: String(req.state ?? "")};
+    }
+    req.state = Object.assign({}, req.state, {image: b64});
+    $("req").value = JSON.stringify(req, null, 2);
+    st.textContent = `attached your image, downscaled to ${w}x${h} ` +
+      `(the validated distribution) — state.image updated in the ` +
+      `request; adjust state/questions to match it`;
+    $("caseview").scrollIntoView({behavior: "smooth", block: "nearest"});
+  } catch (e) {
+    st.className = "status err";
+    st.textContent = "could not read that image: " + e.message;
+  }
+  $("own").value = "";  // allow re-picking the same file
+};
 
 $("send").onclick = send;
 load();

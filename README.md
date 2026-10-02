@@ -243,7 +243,11 @@ patch). Decision quality is **validated at 640×640** (the training
 renders, 400 tokens) — larger resolutions are accepted but
 out-of-distribution, and per-question latency scales linearly with
 pixels (a 6-option choice question on a 12 MP photo is ~70k vision
-tokens of forward). Send ~640×640 for interactive use.
+tokens of forward). The demo page's *attach your own image* picker
+auto-downscales to 640px before the wire, and requests carrying larger
+images get an advisory `notice` in the response with the computed
+per-pass token cost; `usage.input_tokens` counts the real image tokens
+(`kapteeni.model_v11c.vision_tokens`, anchored to the measured grids).
 
 ## Layout
 

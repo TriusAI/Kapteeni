@@ -93,6 +93,49 @@ def test_question_passes_match_training_layout():
     assert "level 1 of 2 - low" in sc[0]["text"]
 
 
+def test_vision_tokens_matches_measured_grids():
+    """Anchored to the 2026-10-02 processor probe (grid_thw values)."""
+    from kapteeni.model_v11c import vision_tokens
+    assert vision_tokens(640, 640) == 400      # the training figure
+    assert vision_tokens(1024, 768) == 768
+    assert vision_tokens(1920, 1080) == 2040
+    assert vision_tokens(4000, 3000) == 11750
+    # above the 16.78 MP processor budget: proportional estimate
+    assert abs(vision_tokens(5000, 4000) - 16300) < 300
+
+
+def test_usage_counts_real_image_tokens():
+    """No flat 399: a bigger attached image costs more input tokens."""
+    m = MockV11C()
+    q = {"q": {"type": "noul", "instructions": "x", "criteria": None}}
+    small, u1 = m.evaluate(img_state(), q)
+    big, u2 = m.evaluate(img_state(b64=_b64_of(1600, 1200)), q)
+    assert u2["input_tokens"] > u1["input_tokens"]
+    assert small == small  # sanity: both evaluated
+
+
+def _b64_of(w, h):
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGB", (w, h), (10, 200, 30)).save(buf, "PNG")
+    return base64.b64encode(buf.getvalue()).decode()
+
+
+def test_server_notice_on_oversized_image(server):
+    """Images above the validated 640x640 distribution get an advisory
+    notice; small ones get none."""
+    body = {"state": {"image": _b64_of(1600, 1200), "note": "photo"},
+            "model": "kapteeni-v1.1c",
+            "questions": {"q": {"type": "noul", "instructions": "x",
+                                "criteria": None}}}
+    status, resp = post(server, body)
+    assert status == 200
+    assert "notice" in resp and "validated at 640x640" in resp["notice"]
+    body["state"] = img_state()  # 8x8 -> tiny, below 0.5 MP
+    status, resp = post(server, body)
+    assert status == 200 and "notice" not in resp
+
+
 # --------------------------------------------------------------------- E1
 
 def test_e1_independence_with_images():

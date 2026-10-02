@@ -133,8 +133,26 @@ def make_handler(model, api_key: str | None, served_as: str):
             except ContractError as e:
                 self._json(e.status, e.body())
                 return
-            self._json(200, {"model": served_as, "answers": answers,
-                             "usage": usage})
+            resp = {"model": served_as, "answers": answers, "usage": usage}
+            # optional notice: the attached image exceeds the validated
+            # 640x640 distribution (all six gates were read there)
+            try:
+                from kapteeni.model_v11c import (MAX_PIXELS, extract_image,
+                                                  vision_tokens)
+                _, img = extract_image(state)
+                if img is not None:
+                    mp = img.width * img.height / 1e6
+                    tok = vision_tokens(img.width, img.height)
+                    if mp > 0.5:
+                        resp["notice"] = (
+                            f"state.image is {mp:.1f} MP (~{tok} vision "
+                            f"tokens per pass); decision quality is "
+                            f"validated at 640x640 (~400 tokens) — "
+                            f"downscale for speed and for staying in the "
+                            f"validated distribution")
+            except Exception:
+                pass  # the notice is advisory; never fail a request on it
+            self._json(200, resp)
 
     return Handler
 

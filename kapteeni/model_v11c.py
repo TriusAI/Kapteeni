@@ -41,6 +41,28 @@ from kapteeni.serialize import (choice_option_pass, instructions_text,
 IMAGE_PLACEHOLDER = "<attached>"
 _DATA_URI = re.compile(r"^data:image/(?:png|jpeg|jpg|webp);base64,", re.I)
 MAX_IMAGE_BYTES = 8 * 2**20
+MAX_PIXELS = 16777216  # the processor's size.longest_edge budget; larger
+# images are downscaled to fit before the vision tower
+
+
+def vision_tokens(w: int, h: int) -> int:
+    """Merged-patch token count the Qwen3.5 processor emits for an
+    w x h image (16px patches, rounded up to the 2x merge grid; each
+    vision token covers 32x32 px). Exact up to the MAX_PIXELS budget,
+    a close estimate above it (the processor rescales proportionally).
+
+    Measured anchors (docs probe, 2026-10-02): 640x640 -> 400 (the
+    training figure), 1024x768 -> 768, 1920x1080 -> 2040,
+    4000x3000 -> 11750."""
+    if w * h > MAX_PIXELS:
+        s = (MAX_PIXELS / (w * h)) ** 0.5
+        w, h = int(w * s), int(h * s)
+
+    def patches(x: int) -> int:
+        p = -(-x // 16)
+        return p + (p & 1)  # the merge grid forces even patch counts
+
+    return patches(w) * patches(h) // 4
 
 
 def extract_image(state: Any):
@@ -159,6 +181,8 @@ class SystemOneV11C:
             self._load()
         pass_state, img = extract_image(state)
         st = state_text(pass_state)
+        img_tok = (vision_tokens(img.width, img.height)
+                   if img is not None else 0)
         answers: dict = {}
         in_tok = 0
         for qid, q in questions.items():
@@ -186,6 +210,8 @@ class SystemOneV11C:
             elif isinstance(crit, list):
                 surface += " ".join(str(x) for x in crit)
             in_tok += len(surface) // 4
-        in_tok += len(st) // 4 + (399 if img is not None else 0)
+        in_tok += len(st) // 4 + img_tok
         out_tok = len(json.dumps(answers)) // 4
+        # usage keeps the reference shape {input_tokens, output_tokens};
+        # the image token count rides in the server's `notice` instead
         return answers, {"input_tokens": in_tok, "output_tokens": out_tok}
