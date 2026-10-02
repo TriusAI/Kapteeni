@@ -337,8 +337,19 @@ def slice_accuracy(head, T: float, h: torch.Tensor, records: list[dict]) -> floa
 
 
 def _inner_of(model):
-    """PeftModel(Qwen3_5ForConditionalGeneration) or the bare model -> the
-    multimodal inner model whose forward returns last_hidden_state
-    (input_ids + pixel_values; LoRA adapters live inside it either way)."""
-    m = model.base_model.model if hasattr(model, "base_model") else model
-    return m.model if hasattr(m, "model") else m
+    """Any wrapper spelling (PeftModel, PeftModel(CausalLM), the bare
+    multimodal ForConditionalGeneration, dist-style merged load) ->
+    the model whose forward takes input_ids + pixel_values and carries
+    .layers (decoder) + .visual (the vision tower). Walks down through
+    .model / .base_model indirections until it lands there."""
+    m = model
+    for _ in range(5):
+        if hasattr(m, "layers") and hasattr(m, "visual"):
+            return m
+        nxt = getattr(m, "model", None)
+        if nxt is None:
+            nxt = getattr(m, "base_model", None)
+        if nxt is None or nxt is m:
+            return m
+        m = nxt
+    return m
