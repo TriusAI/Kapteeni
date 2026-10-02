@@ -51,8 +51,31 @@
 
         <img class="ramp" src="assets/ramp.png" alt="" aria-hidden="true">
 
+        <section class="doc-section" id="models">
+          <h2><span class="sec-no">&#167;&#8202;1</span>Models on Hugging Face</h2>
+          <p>All three shipped on the
+            <a href="https://huggingface.co/TriusAI">TriusAI</a> org:</p>
+          <div class="table-scroll">
+            <table class="data">
+              <caption>The multimodal pack (2026-10-02) additionally carries the
+                serving package and the self-contained demo website. Weights
+                CC BY-SA 4.0, code/generators Apache-2.0, on every pack. The
+                publishing workflow:
+                <a href="https://github.com/TriusAI/Kapteeni/blob/main/docs/PUBLISH-HF.md">PUBLISH-HF.md</a>.</caption>
+              <thead>
+                <tr><th>Model</th><th>Line</th><th>Download</th><th>Note</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>kapteeni-v1-meticulous</td><td>text — Qwen3-4B-Instruct-2507</td><td><a href="https://huggingface.co/TriusAI/kapteeni-v1-meticulous">huggingface.co/TriusAI/kapteeni-v1-meticulous</a></td><td>the default; conservative confidence</td></tr>
+                <tr><td>kapteeni-v1-intuit</td><td>text — Qwen3-4B-Instruct-2507</td><td><a href="https://huggingface.co/TriusAI/kapteeni-v1-intuit">huggingface.co/TriusAI/kapteeni-v1-intuit</a></td><td>sharper on well-formed numeric, temporal, and multi-step traffic</td></tr>
+                <tr><td>kapteeni-v1.1c</td><td>multimodal — Qwen3.5-4B; images + en/zh</td><td><a href="https://huggingface.co/TriusAI/kapteeni-v1.1c">huggingface.co/TriusAI/kapteeni-v1.1c</a></td><td>pinned at <code>17affb8</code> — cite the pin</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
         <section class="doc-section" id="pipeline">
-          <h2><span class="sec-no">&#167;&#8202;1</span>Pipeline</h2>
+          <h2><span class="sec-no">&#167;&#8202;2</span>Pipeline</h2>
           <figure class="figure">
             <pre><code>state + questions ──▶ serialize ──▶ Qwen3-4B (LoRA-adapted) ──▶ h_last per pass
                                       (one pass per question/option/level)
@@ -71,7 +94,7 @@
         </section>
 
         <section class="doc-section" id="variants">
-          <h2><span class="sec-no">&#167;&#8202;2</span>The two text variants, side by side</h2>
+          <h2><span class="sec-no">&#167;&#8202;3</span>The two text variants, side by side</h2>
           <p>Both variants share one architecture and one wire format; they differ
             in training data and serving constants, and are good at different
             things.</p>
@@ -95,18 +118,18 @@
             on unknown, messy, adversarial traffic; intuit commits to sharper
             decisions where the traffic is well-formed — a deliberate trade,
             stated rather than hidden behind one default. Download links:
-            <a href="#models">&#167;&#8202;7</a>.</p>
+            <a href="#models">&#167;&#8202;1</a>.</p>
           <h3>Download the text line</h3>
           <p><a href="https://huggingface.co/TriusAI/kapteeni-v1-meticulous">kapteeni-v1-meticulous</a>
             and <a href="https://huggingface.co/TriusAI/kapteeni-v1-intuit">kapteeni-v1-intuit</a>
             are live on Hugging Face as self-contained distribution packs —
             merged model, heads, serving constants, model card; nothing needs
             to be trained or merged locally to serve them. All three published
-            models are gathered in <a href="#models">&#167;&#8202;7</a>.</p>
+            models are gathered in <a href="#models">&#167;&#8202;1</a>.</p>
         </section>
 
         <section class="doc-section" id="multimodal">
-          <h2><span class="sec-no">&#167;&#8202;3</span>The multimodal line: kapteeni-v1.1c</h2>
+          <h2><span class="sec-no">&#167;&#8202;4</span>The multimodal line: kapteeni-v1.1c</h2>
           <p>One model, one wire contract. A state may carry an
             <code>image</code> field (base64 PNG/JPEG, at most 8 MiB decoded
             bytes) that the backbone sees natively; questions stay typed
@@ -152,7 +175,7 @@
             repo main may advance past it for card-text and doc updates only
             (weights and serving constants are frozen at the snapshot). The
             pack contents and download links are gathered in
-            <a href="#models">&#167;&#8202;7</a>.</p>
+            <a href="#models">&#167;&#8202;1</a>.</p>
           <h3>Demo website</h3>
           <p>The v1.1c server ships a self-contained, same-origin demo page
             (open the server root): 15 pre-configured cases — nine generated
@@ -174,7 +197,7 @@
         </section>
 
         <section class="doc-section" id="replicated">
-          <h2><span class="sec-no">&#167;&#8202;4</span>What is replicated</h2>
+          <h2><span class="sec-no">&#167;&#8202;5</span>What is replicated</h2>
           <div class="table-scroll">
             <table class="data">
               <thead>
@@ -195,7 +218,7 @@
         </section>
 
         <section class="doc-section" id="design">
-          <h2><span class="sec-no">&#167;&#8202;5</span>Design decisions</h2>
+          <h2><span class="sec-no">&#167;&#8202;6</span>Design decisions</h2>
           <ol>
             <li><strong>Noul is trained absolute</strong> — a single sigmoid against
               soft targets, never a yes/no softmax pair. A complement-consistent
@@ -230,7 +253,7 @@
         </section>
 
         <section class="doc-section" id="quickstart">
-          <h2><span class="sec-no">&#167;&#8202;6</span>Quickstart</h2>
+          <h2><span class="sec-no">&#167;&#8202;7</span>Quickstart</h2>
           <pre><code>cd kapteeni
 python3 -m pytest                          # 170+ tests, mock model, no GPU needed
 
@@ -251,28 +274,7 @@ curl localhost:8000/v1/systemone -d '{"state":"...","model":"jev-latest","questi
             answer shapes are on the <a href="api.html">Wire API</a> page.</p>
         </section>
 
-        <section class="doc-section" id="models">
-          <h2><span class="sec-no">&#167;&#8202;7</span>Models on Hugging Face</h2>
-          <p>All three shipped on the
-            <a href="https://huggingface.co/TriusAI">TriusAI</a> org:</p>
-          <div class="table-scroll">
-            <table class="data">
-              <caption>The multimodal pack (2026-10-02) additionally carries the
-                serving package and the self-contained demo website. Weights
-                CC BY-SA 4.0, code/generators Apache-2.0, on every pack. The
-                publishing workflow:
-                <a href="https://github.com/TriusAI/Kapteeni/blob/main/docs/PUBLISH-HF.md">PUBLISH-HF.md</a>.</caption>
-              <thead>
-                <tr><th>Model</th><th>Line</th><th>Download</th><th>Note</th></tr>
-              </thead>
-              <tbody>
-                <tr><td>kapteeni-v1-meticulous</td><td>text — Qwen3-4B-Instruct-2507</td><td><a href="https://huggingface.co/TriusAI/kapteeni-v1-meticulous">huggingface.co/TriusAI/kapteeni-v1-meticulous</a></td><td>the default; conservative confidence</td></tr>
-                <tr><td>kapteeni-v1-intuit</td><td>text — Qwen3-4B-Instruct-2507</td><td><a href="https://huggingface.co/TriusAI/kapteeni-v1-intuit">huggingface.co/TriusAI/kapteeni-v1-intuit</a></td><td>sharper on well-formed numeric, temporal, and multi-step traffic</td></tr>
-                <tr><td>kapteeni-v1.1c</td><td>multimodal — Qwen3.5-4B; images + en/zh</td><td><a href="https://huggingface.co/TriusAI/kapteeni-v1.1c">huggingface.co/TriusAI/kapteeni-v1.1c</a></td><td>pinned at <code>17affb8</code> — cite the pin</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
+        
 
         <section class="doc-section" id="layout">
           <h2><span class="sec-no">&#167;&#8202;8</span>Repository layout</h2>
