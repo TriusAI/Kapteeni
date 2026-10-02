@@ -5,7 +5,9 @@
 decisions on well-formed numeric/temporal/multi-step traffic). The multimodal
 line: **kapteeni-v1.1c** — one Qwen3.5-4B backbone answering noul/choice/score
 questions over states with **attached images**, in English and Chinese, all
-pre-registered gates passed (2026-10-02). `docs/JEVBENCH.md` holds every
+pre-registered gates passed (2026-10-02), **published at
+[huggingface.co/TriusAI/kapteeni-v1.1c](https://huggingface.co/TriusAI/kapteeni-v1.1c)**
+(pinned revision `17affb8`). `docs/JEVBENCH.md` holds every
 benchmark number and the full experiment history; `docs/EVAL.md` the
 calibration report.
 
@@ -219,6 +221,11 @@ Serving constants: the per-primitive temperatures fitted on combined
 held-out val (`model_cache/kapteeni_v11c/final_gates.json` — the only
 constants fitted anywhere in the line, per the pre-registration).
 
+**Published:** [huggingface.co/TriusAI/kapteeni-v1.1c](https://huggingface.co/TriusAI/kapteeni-v1.1c)
+— the distribution pack of 2026-10-02 (merged model, heads, fitted
+constants, model card, the serving package + demo website), pinned at
+revision `17affb8`; weights CC BY-SA 4.0, code/generators Apache-2.0.
+
 ## Demo website (local)
 
 The v1.1c server ships with a self-contained demo page — pre-configured
@@ -230,6 +237,9 @@ origin so no CORS setup is needed:
 # trained model (the ship configuration; needs the v1.1c artifacts + GPU)
 HF_HUB_OFFLINE=1 python3 -m kapteeni.serve_v11c --port 8002
 # then open http://localhost:8002/
+
+# from Hugging Face (the published pack; merged model — no local artifacts needed)
+python3 -m kapteeni.serve_v11c --hf TriusAI/kapteeni-v1.1c --port 8002
 
 # interface dry-run without a GPU (mock model)
 python3 -m kapteeni.serve_v11c --mock --port 8002
