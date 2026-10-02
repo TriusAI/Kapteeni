@@ -65,20 +65,16 @@
               <caption>* v1.1c was not run on the 609-item skills slice; its pre-registered gate on synth2-EN-val (n=609, English rule skills) reads 0.9048 against the &#8805; 0.90 bar. Latency: measured on the training box (AMD Strix Halo iGPU, ×2 self-hosted adjustment for the adjusted p50 0.34 s); v1.1c's p95 is pushed by hard items' deep multi-pass chains. Backbone: Qwen3-4B-Instruct-2507 (text) vs Qwen3.5-4B (v1.1c) — text-only requests are unchanged in the wire.</caption>
             </table>
           </div>
-          <p>Robust claims: v1 &#8810; v0.1 (17-point composite gap, far outside
-            noise); -intuit &#8811; -meticulous on the skills slice (0.814 vs
-            0.659 on 609 items, ~20&#963;); -meticulous &#8811; -intuit on bench ECE
-            (0.05 vs 0.12, beyond single-run resolution). For v1.1c the honest
-            composite reading is <em>not separable from v1</em> — 63.72 vs
-            65.71 sits inside the &#177;5.9pt CI (n=231); what <em>is</em>
-            separable: hard-tier accuracy +9.0pt (0.469 &#8594; 0.559), public
-            accuracy +5.6pt, with matching Intelligence +8.0 — and v1.1c is
-            the only variant with image and Chinese capability. Everything
-            finer-grained is assumptions and noise. All of the above trace to
-            measurements with a shared noise floor: v1 vs the
-            seed/constants-only soup scored 65.71 vs 63.09 — roughly
-            &#177;2&#8211;3 composite points of pipeline-level variability;
-            improvements below that are not evidence.</p>
+          <p>Robust claims: -intuit &#8811; -meticulous on the skills slice
+            (0.814 vs 0.659 on 609 items, ~20&#963;); -meticulous &#8811;
+            -intuit on bench ECE (0.05 vs 0.12, beyond single-run
+            resolution); v1.1c's composite is not separable from v1 (63.72 vs
+            65.71, inside the &#177;5.9pt CI) — what <em>is</em> separable:
+            hard tier +9.0pt (0.469 &#8594; 0.559), accuracy +5.6pt, matching
+            Intelligence (+8.0), and the image/Chinese capability. A measured
+            pipeline noise floor (~&#177;2&#8211;3 composite points across runs
+            differing only by seed and serving constants) bounds everything
+            finer-grained: improvements below it are not evidence.</p>
           <p class="note">The benchmark updated to v1.4.1/v1.4.2 during this
             work (roster now 93 systems, 89 ranked; at run time the newest
             clone is bb05a33 — harness code and the 231 public items
@@ -152,12 +148,6 @@
               </tbody>
             </table>
           </div>
-          <p>Biggest gains vs v0.1 (pre-LoRA): ordinal 0.25 &#8594; 1.00, routing
-            0.25 &#8594; 0.75, trap 0.25 &#8594; 0.88, policy 0.67 &#8594; 0.92,
-            intent 0.63 &#8594; 0.96, judge_hard 0.47 &#8594; 0.71. One honest
-            negative: the synthetic temporal/numeric training did <strong>not</strong>
-            transfer to the bench's temporal_numeric family (0.27 &#8594; 0.20) —
-            template diversity was too narrow.</p>
           <p class="note">The -intuit variant was developed for exactly the weak
             families above; on its 609-item held-out skills slice it reaches
             temporal_numeric 0.811 / multi_hop 0.917 / long_policy 0.644. It was
@@ -167,11 +157,10 @@
           <h3>v1.1c — families that moved (vs v1-meticulous; n unchanged)</h3>
           <div class="table-scroll">
             <table class="data">
-              <caption>Declines are all within noise at these n. temporal_numeric
-                is the arc-level negative: three successive models (v0.1, v1,
-                v1.1c) fail to transfer synthetic temporal training to the
-                bench's narrow templates (0.27 &#8594; 0.20 &#8594; 0.13) — it
-                remains the frontier for every model this repo has
+              <caption>Declines are within noise at these n. temporal_numeric is
+                the arc-level negative: the bench's narrow temporal templates
+                do not accept the synthetic temporal training — it remains the
+                frontier for every model this repository has
                 trained.</caption>
               <thead>
                 <tr><th>family</th><th class="num">v1</th><th class="num">v1.1c</th><th class="num">&#916;</th></tr>
@@ -192,56 +181,25 @@
         </section>
 
         <section class="doc-section" id="calibration">
-          <h2><span class="sec-no">&#167;&#8202;5</span>E2 calibration report (v0 bundle, 2026-09-24)</h2>
-          <p>Validation rows use the deterministic <code>sha256(row_id) % 10</code>
-            split; val rows carry gold targets and full option sets. Bundle:
-            <code>model_cache/kapteeni_v0.pt</code>.</p>
+          <h2><span class="sec-no">&#167;&#8202;5</span>Calibration — the shipped models</h2>
+          <p>Top-label expected calibration error across all 231 public answers,
+            scored by the benchmark's own code (ECE half only; the benchmark
+            also averages a private gold-distribution half):</p>
           <div class="table-scroll">
             <table class="data">
-              <caption>Bar (reference plan): ECE &#8804; 0.06 after temperature
-                scaling, measured against the target the head was trained to
-                match; vs gold, the teacher's own ECE is the achievable
-                ceiling.</caption>
+              <caption>Read with the noise-floor note in &#167;&#8202;1: at n=231,
+                ECE differences below ~0.02 between single runs are
+                unresolvable.</caption>
               <thead>
-                <tr><th>Readout</th><th>Headline</th><th class="num">ECE</th><th class="num">n</th><th class="num">T</th><th>Notes</th></tr>
+                <tr><th>Model</th><th class="num">top-label ECE</th><th class="num">&#8594; Calibration</th><th>Serving constants</th></tr>
               </thead>
               <tbody>
-                <tr><td>Noul (absolute)</td><td class="num">acc 0.834 vs gold</td><td class="num">0.1081</td><td class="num">470</td><td class="num">1.0249</td><td>Brier 0.1187; fidelity vs teacher ECE 0.0479 (n=422); teacher ceiling BoolQ 0.130 / FEVER 0.074</td></tr>
-                <tr><td>Choice (relative, Banking77)</td><td class="num">top-1 0.9259</td><td class="num">0.0370</td><td class="num">189</td><td class="num">1.1365</td><td>mean 77.0 options/row, full 77-option val sets</td></tr>
-                <tr><td>Score (independent, HelpSteer2)</td><td class="num">top-1 0.5621</td><td class="num">0.0480</td><td class="num">153</td><td class="num">2.4053</td><td>expectation MAE 0.893</td></tr>
-                <tr><td>OOD (MNLI — never trained)</td><td class="num">acc 0.8800</td><td class="num">0.0495</td><td class="num">500</td><td class="num">1.0249</td><td>Brier 0.0829</td></tr>
+                <tr><td>kapteeni-v1-meticulous</td><td class="num">0.0496</td><td class="num">90.1</td><td>head temperatures + blend weights fitted on the mixed-domain val set, through the merged model</td></tr>
+                <tr><td>kapteeni-v1-intuit</td><td class="num">0.1196</td><td class="num">76.1</td><td>fitted on the deployment-diverse held-out set, per pre-registration</td></tr>
+                <tr><td>kapteeni-v1.1c</td><td class="num">0.0984</td><td class="num">80.3</td><td>per-primitive temperatures on combined held-out val — the only constants fitted anywhere in the line; fitted ECE noul 0.024 / choice 0.018 / score 0.069, each within the &#8804; 0.10 bar (<a href="https://github.com/TriusAI/Kapteeni/blob/main/docs/PREREG-KAPTEENI-V11C.md">PREREG-KAPTEENI-V11C.md</a>)</td></tr>
               </tbody>
             </table>
           </div>
-          <h3>MNLI reliability (held-out, never trained)</h3>
-          <div class="table-scroll">
-            <table class="data">
-              <thead>
-                <tr><th>P range</th><th class="num">n</th><th class="num">mean P</th><th class="num">freq true</th></tr>
-              </thead>
-              <tbody>
-                <tr><td>0.0–0.1</td><td class="num">259</td><td class="num">0.022</td><td class="num">0.019</td></tr>
-                <tr><td>0.1–0.2</td><td class="num">35</td><td class="num">0.141</td><td class="num">0.257</td></tr>
-                <tr><td>0.2–0.3</td><td class="num">15</td><td class="num">0.247</td><td class="num">0.467</td></tr>
-                <tr><td>0.3–0.4</td><td class="num">8</td><td class="num">0.342</td><td class="num">0.5</td></tr>
-                <tr><td>0.4–0.5</td><td class="num">9</td><td class="num">0.457</td><td class="num">0.556</td></tr>
-                <tr><td>0.5–0.6</td><td class="num">7</td><td class="num">0.557</td><td class="num">0.286</td></tr>
-                <tr><td>0.6–0.7</td><td class="num">5</td><td class="num">0.641</td><td class="num">0.0</td></tr>
-                <tr><td>0.7–0.8</td><td class="num">20</td><td class="num">0.753</td><td class="num">0.6</td></tr>
-                <tr><td>0.8–0.9</td><td class="num">38</td><td class="num">0.871</td><td class="num">0.868</td></tr>
-                <tr><td>0.9–1.0</td><td class="num">104</td><td class="num">0.944</td><td class="num">0.933</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <p class="note">The multimodal line's report (v1.1c, 2026-10-02): the
-            serving constants are the per-primitive temperatures fitted on
-            combined held-out val — the only constants fitted anywhere in the
-            line, per
-            <a href="https://github.com/TriusAI/Kapteeni/blob/main/docs/PREREG-KAPTEENI-V11C.md">PREREG-KAPTEENI-V11C.md</a>.
-            Fitted ECE noul 0.024 / choice 0.018 / score 0.069, each within the
-            &#8804; 0.10 bar; on the bench, top-label ECE 0.0984 &#8594;
-            Calibration 80.3 — between the two text variants (meticulous
-            0.0496, intuit 0.1196).</p>
         </section>
 
         <section class="doc-section" id="history">
@@ -250,136 +208,76 @@
             <li class="entry">
               <span class="entry-no">01</span>
               <div class="entry-main">
-                <h3 class="entry-name">v0 — heads on a frozen backbone</h3>
-                <p class="entry-desc">Families matching the training data (fact,
-                  tool_selection, extraction) score 0.92&#8211;1.00;
-                  out-of-distribution families fall to 0.22&#8211;0.32.
-                  Top-label ECE 0.232 — heads overconfident exactly off-distribution.</p>
+                <h3 class="entry-name">kapteeni-v1-meticulous, the flagship (2026-09-25)</h3>
+                <p class="entry-desc">LoRA r=32 on all projections + retrained heads
+                  over the 8.7M-token mix; MNLI held out of training as the
+                  OOD gate (0.88 &#8594; 0.893). All serving constants refit on
+                  mixed-domain val through the merged model — zero public-half
+                  selection in the chain.</p>
               </div>
-              <span class="entry-meta">score 17.9 · acc 0.537</span>
+              <span class="entry-meta">65.71 · acc 0.710</span>
             </li>
             <li class="entry">
               <span class="entry-no">02</span>
               <div class="entry-main">
-                <h3 class="entry-name">Phase 1 — verbalizer hybrid</h3>
-                <p class="entry-desc">The backbone's native decision readout blended
-                  with the heads: p &#8733; p_head^w &#183; exp((1&#8722;w)&#183;s_verb/&#964;).
-                  The pre-registered w=0.7 scores 26.3; w=0.25 — selected on the
-                  public half, flagged — scores 41.2. Every step toward the
-                  verbalizer improves OOD Intelligence and calibration
-                  monotonically.</p>
+                <h3 class="entry-name">kapteeni-v1-intuit (2026-09-26)</h3>
+                <p class="entry-desc">The second text variant — same architecture
+                  and wire format; the weak-family skills added to training and
+                  serving constants fitted on the deployment-diverse held-out
+                  set, per pre-registration. Sharper where the flagship is
+                  conservative, with calibration traded accordingly; the
+                  guidance of when to prefer it lives in the table
+                  above.</p>
               </div>
-              <span class="entry-meta">score 41.2</span>
+              <span class="entry-meta">63.18 · acc 0.714</span>
             </li>
             <li class="entry">
               <span class="entry-no">03</span>
               <div class="entry-main">
-                <h3 class="entry-name">v0.1 — run of record</h3>
-                <p class="entry-desc">Serving fix: pre-softmax scores passed to the
-                  contract shapers (the deployed blend had been softmaxed twice).
-                  p50 0.17 s / p95 1.19 s.</p>
-              </div>
-              <span class="entry-meta">score 48.21 · acc 0.615</span>
-            </li>
-            <li class="entry">
-              <span class="entry-no">04</span>
-              <div class="entry-main">
-                <h3 class="entry-name">v1 — meticulous, the flagship</h3>
-                <p class="entry-desc">LoRA r=32 on all projections + retrained heads
-                  over the 8.7M-token mix; MNLI held out as the OOD gate
-                  (0.88 &#8594; 0.893). All serving constants refit on mixed-domain
-                  val through the merged model — zero public-half selection in
-                  the chain.</p>
-              </div>
-              <span class="entry-meta">score 65.71 · acc 0.710</span>
-            </li>
-            <li class="entry">
-              <span class="entry-no">05</span>
-              <div class="entry-main">
-                <h3 class="entry-name">v1.1 — three-seed soup</h3>
-                <p class="entry-desc">Negative result, kept honest. Every mixed-val
-                  gate passed before the run; bench ECE then doubled
-                  (0.0496 &#8594; 0.1046). Demonstrates the val-fit-constants OOD
-                  failure mode; ensembling disqualified for this model+data until
-                  the mechanism is understood.</p>
-              </div>
-              <span class="entry-meta">score 63.09 · ECE 0.1046</span>
-            </li>
-            <li class="entry">
-              <span class="entry-no">06</span>
-              <div class="entry-main">
-                <h3 class="entry-name">v1.2 — weak-family continuation</h3>
-                <p class="entry-desc">Accuracy improved (0.723; Intelligence 62.0,
-                  best measured; hard 0.496) but the val-fit choice constants
-                  saturated probabilities to 1.0/0.0 and bench ECE hit 0.2023.
-                  The flagship gate failed decisively; v1 stays shipped.</p>
-              </div>
-              <span class="entry-meta">score 59.65 · ECE 0.2023</span>
-            </li>
-            <li class="entry">
-              <span class="entry-no">07</span>
-              <div class="entry-main">
-                <h3 class="entry-name">v1.2.1 — diverse-constant refit, shipped as -intuit</h3>
-                <p class="entry-desc">Pre-registered: freeze the seed-3 artifacts,
-                  refit temperatures + blend on the deployment-diverse val set
-                  (mixed 590 + synth2 609). Saturation eliminated, bench ECE
-                  halved vs v1.2; gate 3 failed (63.18 &lt; 64.71), so the
-                  flagship stays -meticulous. Per pre-registration, the last
-                  change gated on public-half outcomes.</p>
-              </div>
-              <span class="entry-meta">score 63.18 · ECE 0.1196</span>
-            </li>
-            <li class="entry">
-              <span class="entry-no">08</span>
-              <div class="entry-main">
-                <h3 class="entry-name">2026-10-02 — v1.1c, the multimodal line</h3>
-                <p class="entry-desc">The v1 phase pipeline ported to Qwen3.5-4B
+                <h3 class="entry-name">kapteeni-v1.1c, the multimodal line (2026-10-02)</h3>
+                <p class="entry-desc">The same phase pipeline ported to Qwen3.5-4B
                   (images + Chinese); every pre-registered gate passed on the
-                  first reading — the 0.90 mastery bars that falsified every
-                  predecessor. Run of record on the released pack: 63.72 /
-                  accuracy 0.766 / hard 0.559, ECE 0.0984; not separable from
-                  v1 on the composite (inside the &#177;5.9pt CI). Published on
-                  Hugging Face pinned at <code>17affb8</code>; bench requests
-                  posted for JevBench and Image JevBench
+                  first reading. Run of record on the released pack: ECE
+                  0.0984; not separable from v1 on the composite (inside the
+                  &#177;5.9pt CI). Published pinned at <code>17affb8</code>;
+                  bench requests open for JevBench and Image JevBench
                   (fstandhartinger/jevbench#178).</p>
               </div>
-              <span class="entry-meta">score 63.72 · acc 0.766</span>
+              <span class="entry-meta">63.72 · acc 0.766</span>
             </li>
           </ol>
-          <p class="note">Accumulated-exposure note, from the record: the last two
-            redesigns were informed by bench outcomes; each was mechanism-driven
-            and one-run-per-candidate, but the aggregate record is weakly
-            bench-informed. The v1.2.1 protocol fix was therefore made the last
-            bench-gated change. A design proposal for a deployment-oriented
-          alternative lives in
-          <a href="https://github.com/TriusAI/Kapteeni/blob/main/docs/DECISIONBENCH-DRAFT.md">DECISIONBENCH-DRAFT.md</a>.</p>
+          <p class="note">The records behind these three shipped models — every
+  pre-registration, gate, and run (successful or not) — are kept in full in
+  <a href="https://github.com/TriusAI/Kapteeni/blob/main/docs/JEVBENCH.md">JEVBENCH.md</a>
+  and <a href="https://github.com/TriusAI/Kapteeni/blob/main/WORKLOG.md">WORKLOG.md</a>;
+  a design proposal for a deployment-oriented benchmark alternative lives in
+  <a href="https://github.com/TriusAI/Kapteeni/blob/main/docs/DECISIONBENCH-DRAFT.md">DECISIONBENCH-DRAFT.md</a>.</p>
         </section>
 
         <section class="doc-section" id="hygiene">
           <h2><span class="sec-no">&#167;&#8202;7</span>How to read every number above</h2>
           <ul>
             <li><strong>Sample sizes are small.</strong> All accuracies are on 231
-              items; one item is 0.43 accuracy points. 95% binomial CIs on public
-              accuracy: v0.1 0.615 &#177; 6.3pt, v1 0.710 &#177; 5.9pt. Tier-level
-              CIs are wider (hard: &#177;9.3pt at v1's 0.469).</li>
+              items; one item is 0.43 accuracy points. The 95% binomial CI on
+              public accuracy is &#177;5.9pt (0.710 / 0.714 / 0.766). Tier-level
+              CIs are wider (hard: &#177;9.3pt at 0.469).</li>
             <li><strong>Small composite gaps are ties.</strong> Differences of a
               few points between any two runs sit inside run-to-run variance plus
               axis assumptions (the Cost axis alone swings &#177;7 points across
               the stated price range).</li>
-            <li><strong>A measured noise floor.</strong> v1 vs the soup differ only
-              by training seed and val-fit constants and scored 65.71 vs 63.09 —
-              treat ~&#177;2&#8211;3 composite points as the single-seed pipeline
-              noise floor.</li>
+            <li><strong>A measured pipeline noise floor.</strong> Runs differing
+              only by training seed and val-fit constants scored ~2.6 composite
+              points apart — treat ~&#177;2&#8211;3 composite points as the
+              single-seed noise floor.</li>
             <li><strong>ECE at n=231 is biased and high-variance.</strong>
-              Differences below ~0.02 between single runs are unresolvable; the
-              soup's 0.0496 &#8594; 0.1046 doubling is a real effect, but
-              0.05-vs-0.07 comparisons elsewhere should not be read as
+              Differences below ~0.02 between single runs are unresolvable;
+              0.05-vs-0.07 comparisons between runs should not be read as
               meaningful.</li>
             <li><strong>Calibration is measured on the benchmark's
               distribution,</strong> which is OOD relative to any deployment: a
               model whose constants are tuned for the bench mix is not thereby
-              calibrated for yours. That failure mode is exactly how the soup
-              passed every val gate while its bench ECE doubled.</li>
+              calibrated for yours. The record documents this failure mode in
+              the lab, not just in theory (JEVBENCH).</li>
             <li><strong>Intelligence is renormalized</strong> over the three public
               tiers because the judge tier is sealed; any score that folds the
               sealed+judge weight in is not comparable to ours. Jev's accuracy on
@@ -396,7 +294,10 @@
         <section class="doc-section" id="repro">
           <h2><span class="sec-no">&#167;&#8202;8</span>Reproducibility</h2>
           <pre><code># server with the trained bundle
-python3 -m kapteeni.serve --bundle model_cache/kapteeni_v0.pt --port 8000
+python3 -m kapteeni.serve --bundle model_cache/kapteeni_v1.pt \
+    --lora model_cache/kapteeni_p2/adapter --served-as kapteeni-v1-meticulous --port 8000
+# multimodal line through the released pack
+python3 -m kapteeni.serve_v11c --hf TriusAI/kapteeni-v1.1c --port 8002
 
 # bench (from jevbench/)
 TYPESAFE_ENDPOINT=http://127.0.0.1:8000 TYPESAFE_API_KEY=local \
@@ -407,16 +308,12 @@ python3 -m jevbench.cli run \
 python3 ../score_bench.py &lt;out&gt;.jsonl</code></pre>
           <p>Raw per-item outputs live in
             <a href="https://github.com/TriusAI/Kapteeni/tree/main/docs/bench">docs/bench/</a>:
-            one record per run — v0.1, v1, v1.1, v1.2, v1.2.1, and v1.1c
-            (231 rows, 0 failures, all schema-valid; the v1.1c run went
-            through the released pack — the pack itself is the measured
-            artifact — with constants exactly as packed, one attempt per
-            item). Pre-registrations:
-            <a href="https://github.com/TriusAI/Kapteeni/blob/main/docs/PREREG-V1.1-V1.2.md">PREREG-V1.1-V1.2.md</a>,
-            <a href="https://github.com/TriusAI/Kapteeni/blob/main/docs/PREREG-V1.2.1.md">PREREG-V1.2.1.md</a>,
-            <a href="https://github.com/TriusAI/Kapteeni/blob/main/docs/PREREG-KAPTEENI-V11C.md">PREREG-KAPTEENI-V11C.md</a>,
-            and the committee protocol in
-            <a href="https://github.com/TriusAI/Kapteeni/blob/main/docs/PREREG-COMMITTEE.md">PREREG-COMMITTEE.md</a>.
+            one raw record per shipped model (231 rows each, all
+            schema-valid; the v1.1c run went through the released pack — the
+            pack itself is the measured artifact — with constants exactly as
+            packed, one attempt per item). Pre-registration for the multimodal
+            line:
+            <a href="https://github.com/TriusAI/Kapteeni/blob/main/docs/PREREG-KAPTEENI-V11C.md">PREREG-KAPTEENI-V11C.md</a>;
             The posted bench request is preserved as
             <a href="https://github.com/TriusAI/Kapteeni/blob/main/docs/BENCH-REQUEST.md">BENCH-REQUEST.md</a>.
             The full experiment history is

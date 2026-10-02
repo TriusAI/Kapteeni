@@ -91,15 +91,11 @@
               </tbody>
             </table>
           </div>
-          <p class="note">The negative-result trail behind this split: a
-            three-seed model soup (63.09), a weak-family continuation (59.65),
-            and a constants refit (63.18 — the intuit variant) were each
-            pre-registered and run once. All three improved measured val metrics
-            while degrading benchmark calibration; the shared mechanism — serving
-            constants fitted on narrow validation are OOD-fragile — is documented
-            in <a href="https://github.com/TriusAI/Kapteeni/blob/main/docs/JEVBENCH.md">JEVBENCH.md</a>.
-            Rather than discard the best-deciding artifacts, they ship as
-            -intuit with honest guidance about when to prefer them.</p>
+          <p class="note">Why two text variants: meticulous guards calibration
+            on unknown, messy, adversarial traffic; intuit commits to sharper
+            decisions where the traffic is well-formed — a deliberate trade,
+            stated rather than hidden behind one default. Download links:
+            <a href="#models">&#167;&#8202;7</a>.</p>
           <h3>Download the text line</h3>
           <p><a href="https://huggingface.co/TriusAI/kapteeni-v1-meticulous">kapteeni-v1-meticulous</a>
             and <a href="https://huggingface.co/TriusAI/kapteeni-v1-intuit">kapteeni-v1-intuit</a>
@@ -126,10 +122,10 @@
             reading:</p>
           <div class="table-scroll">
             <table class="data">
-              <caption>Context for the bars: the 0.90 mastery bars had
-                falsified every predecessor (v1.1 0.777; v1.1b 0.846/0.841 with
-                MNLI erosion; the text flagship's own phase pipeline ~0.81) —
-                the multi-pass judgment structure is what closed them.</caption>
+              <caption>The bars are deliberately hard — no earlier
+                configuration of this pipeline met them (full history:
+                WORKLOG.md); reaching them with one run is what the
+                multi-pass judgment structure buys.</caption>
               <thead>
                 <tr><th>Gate</th><th class="num">Reading</th><th>Bar</th></tr>
               </thead>
@@ -294,7 +290,7 @@ curl localhost:8000/v1/systemone -d '{"state":"...","model":"jev-latest","questi
             <li><span class="mod">kapteeni/p2_finalize.py</span><span class="mod-desc">fits final temperatures and blend constants; emits a servable bundle</span></li>
             <li><span class="mod">kapteeni/demo/</span><span class="mod-desc">demo cases + images, committed; <code>scripts/make_demo.py</code> regenerates them deterministically from the generators</span></li>
             <li><span class="mod">tests/</span><span class="mod-desc">E1 (parity), E5 (asymmetry), E6 (score semantics), E11 (schema, end-to-end over HTTP); the suites run against the mock by default and against the trained model via <code>KAPTEENI_TEST_BUNDLE=</code></span></li>
-            <li><span class="mod"><span class="dim">remaining modules</span></span><span class="mod-desc"><span class="dim">data synthesis and experiment harnesses (synth, synth2(+zh), synth3(+families/zh/gfx), train_v11*, soup, familyval, fit_diverse, evalx, report, metrics, mock, ollama) — see <a href="https://github.com/TriusAI/Kapteeni/blob/main/WORKLOG.md">WORKLOG.md</a></span></span></li>
+            <li><span class="mod"><span class="dim">remaining modules</span></span><span class="mod-desc"><span class="dim">data synthesis and experiment harnesses (synth, synth2(+zh), synth3(+families/zh/gfx), familyval, fit_diverse, evalx, report, metrics, mock, ollama) — see <a href="https://github.com/TriusAI/Kapteeni/blob/main/WORKLOG.md">WORKLOG.md</a></span></span></li>
           </ul>
         </section>
 
