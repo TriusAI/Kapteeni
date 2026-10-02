@@ -1,0 +1,308 @@
+{
+ "model": "kapteeni-v1.1c",
+ "cases": [
+  {
+   "id": "menu-en",
+   "title": "Cafe menu — one image, three questions",
+   "blurb": "One attached image, three independent questions (two choice, one noul). Independence is structural: every question is judged in its own pass group against the same state, so adding or removing a question never changes another answer.",
+   "family": "menu_board",
+   "image": "images/menu-en.png",
+   "gold": {
+    "priciest": "Flat White",
+    "cheapest": "Latte",
+    "price_gate": "yes"
+   },
+   "request": {
+    "state": {
+     "image": "@file:images/menu-en.png",
+     "note": "A cafe menu."
+    },
+    "model": "kapteeni-v1.1c",
+    "questions": {
+     "priciest": {
+      "type": "choice",
+      "instructions": "Which drink is the most expensive?",
+      "criteria": {
+       "Americano": null,
+       "Macchiato": null,
+       "Latte": null,
+       "Flat White": null,
+       "Chai Latte": null,
+       "Cappuccino": null
+      }
+     },
+     "cheapest": {
+      "type": "choice",
+      "instructions": "Which drink is the cheapest?",
+      "criteria": {
+       "Americano": null,
+       "Macchiato": null,
+       "Latte": null,
+       "Flat White": null,
+       "Chai Latte": null,
+       "Cappuccino": null
+      }
+     },
+     "price_gate": {
+      "type": "noul",
+      "instructions": "Does the Macchiato cost more than $4.00?",
+      "criteria": {
+       "true": "the price is above the threshold",
+       "false": "the price is not above it"
+      }
+     }
+    }
+   },
+   "provenance": "synth3 menu_board, seed 1101 — fresh render, not a dataset row"
+  },
+  {
+   "id": "invoice-en",
+   "title": "Invoice — noul over a document",
+   "blurb": "A yes/no judgment over a rendered invoice. Noul is ABSOLUTE probability (not a complement-consistent pair): P(true) is what your code branches on.",
+   "family": "invoice_receipt",
+   "image": "images/invoice-en.png",
+   "gold": {
+    "invoice_check": "no"
+   },
+   "request": {
+    "state": {
+     "image": "@file:images/invoice-en.png",
+     "note": "An invoice."
+    },
+    "model": "kapteeni-v1.1c",
+    "questions": {
+     "invoice_check": {
+      "type": "noul",
+      "instructions": "Is the total more than $185.00?",
+      "criteria": {
+       "true": "the total exceeds that amount",
+       "false": "the total is at or below it"
+      }
+     }
+    }
+   },
+   "provenance": "synth3 invoice_receipt, seed 1102"
+  },
+  {
+   "id": "seating-en",
+   "title": "Seating chart — choice over positions",
+   "blurb": "A relative decision over a visual layout: probabilities over the seat options sum to exactly 1, with the contract's confidence derived from the distribution's shape.",
+   "family": "seating_chart",
+   "image": "images/seating-en.png",
+   "gold": {
+    "seat": "R2"
+   },
+   "request": {
+    "state": {
+     "image": "@file:images/seating-en.png",
+     "note": "An office desk map."
+    },
+    "model": "kapteeni-v1.1c",
+    "questions": {
+     "seat": {
+      "type": "choice",
+      "instructions": "Which row has the most occupied desks?",
+      "criteria": {
+       "R1": null,
+       "R2": null,
+       "R3": null,
+       "R4": null
+      }
+     }
+    }
+   },
+   "provenance": "synth3 seating_map, seed 1103"
+  },
+  {
+   "id": "weather-en",
+   "title": "Weather forecast — scored levels",
+   "blurb": "A scored question: each level is judged independently (does the state match this level?), normalized at the API layer; the score is the 0-based expectation and can be fractional.",
+   "family": "weather_panel",
+   "image": "images/weather-en.png",
+   "gold": {
+    "days": "Four"
+   },
+   "request": {
+    "state": {
+     "image": "@file:images/weather-en.png",
+     "note": "A weather forecast."
+    },
+    "model": "kapteeni-v1.1c",
+    "questions": {
+     "days": {
+      "type": "score",
+      "instructions": "How many days are colder than 10 degrees?",
+      "criteria": [
+       "None",
+       "One",
+       "Two",
+       "Three",
+       "Four",
+       "Five"
+      ]
+     }
+    }
+   },
+   "provenance": "synth3 weather, seed 1104"
+  },
+  {
+   "id": "menu-zh",
+   "title": "Chinese menu — 中文图像决策",
+   "blurb": "同一张图像、中文的问题与选项 — the trained answer space stays yes/no + option names in every language; Chinese enters through the state, instructions, and criteria, never the answer tokens.",
+   "family": "menu_board",
+   "image": "images/menu-zh.png",
+   "gold": {
+    "最贵": "印度拉茶"
+   },
+   "request": {
+    "state": {
+     "image": "@file:images/menu-zh.png",
+     "note": "一张咖啡菜单。"
+    },
+    "model": "kapteeni-v1.1c",
+    "questions": {
+     "最贵": {
+      "type": "choice",
+      "instructions": "哪种饮品最贵？",
+      "criteria": {
+       "浓缩咖啡": null,
+       "印度拉茶": null,
+       "拿铁": null,
+       "摩卡": null,
+       "冰咖啡": null
+      }
+     }
+    }
+   },
+   "provenance": "synth3zh menu_board, seed 1105"
+  },
+  {
+   "id": "temporal-en",
+   "title": "Date arithmetic — text noul",
+   "blurb": "The temporal_numeric skill family: exact date arithmetic with weekday-consistent trap dates. No image — decisions over structured state alone.",
+   "family": "temporal_numeric",
+   "image": null,
+   "gold": {
+    "q": "no"
+   },
+   "request": {
+    "state": {
+     "reference_date": "March 12, 2023",
+     "schedule": "Per the schedule, the board meeting falls 26 days after `reference_date` — no earlier and no later.",
+     "claimed_date": "7 April 2023"
+    },
+    "model": "kapteeni-v1.1c",
+    "questions": {
+     "q": {
+      "type": "noul",
+      "instructions": "Is `claimed_date` a different date from the one the `schedule` describes?",
+      "criteria": {
+       "true": "the claimed date differs from the described date",
+       "false": "the claimed date is the described date"
+      }
+     }
+    }
+   },
+   "provenance": "synth2 temporal_numeric, seed 1201"
+  },
+  {
+   "id": "eligibility-en",
+   "title": "Eligibility chain — multi-step text choice",
+   "blurb": "The multi_hop family: three requirements, one question — which single requirement fails (or none)? Each option is judged against the state in its own pass; the softmax over the group is shaped in-loss during training.",
+   "family": "multi_hop",
+   "image": null,
+   "gold": {
+    "q": "meets_all_requirements"
+   },
+   "request": {
+    "state": {
+     "today": "Monday, July 10, 2023",
+     "requirements": {
+      "tenure_requirement": "at least 24 complete months since `joined_on`",
+      "spend_requirement": "trailing 12-month spend of at least $1000",
+      "case_volume_requirement": "at least 3 support cases filed this quarter"
+     },
+     "application": {
+      "joined_on": "the 9th of June 2021",
+      "trailing_12m_spend_usd": 1100,
+      "cases_filed_this_quarter": 3
+     }
+    },
+    "model": "kapteeni-v1.1c",
+    "questions": {
+     "q": {
+      "type": "choice",
+      "instructions": "The program grants access only if every `requirements` entry is satisfied by `application`. Which single requirement does the application fail to meet — or does it meet all of them?",
+      "criteria": {
+       "tenure_requirement": "fails the tenure requirement",
+       "spend_requirement": "fails the spend requirement",
+       "case_volume_requirement": "fails the case-volume requirement",
+       "meets_all_requirements": "every requirement is satisfied"
+      }
+     }
+    }
+   },
+   "provenance": "synth2 multi_hop, seed 1202"
+  },
+  {
+   "id": "urgency-en",
+   "title": "Deadline urgency — scored text",
+   "blurb": "A scored decision with explicitly binned levels stated in the state; gold is the bin the deadline falls into.",
+   "family": "temporal_numeric",
+   "image": null,
+   "gold": {
+    "q": "low — more than 7 days remain until the deadline"
+   },
+   "request": {
+    "state": {
+     "today": "6 June 2023",
+     "deadline": "16 June 2023",
+     "scale": "Urgency bins: critical — the deadline is today or already passed; high — 1-2 days remain; moderate — 3-7 days remain; low — more than 7 days remain."
+    },
+    "model": "kapteeni-v1.1c",
+    "questions": {
+     "q": {
+      "type": "score",
+      "instructions": "How urgent is the `deadline`, per the bins in `scale`?",
+      "criteria": [
+       "critical — the deadline is today or already passed",
+       "high — 1-2 days remain until the deadline",
+       "moderate — 3-7 days remain until the deadline",
+       "low — more than 7 days remain until the deadline"
+      ]
+     }
+    }
+   },
+   "provenance": "synth2 temporal_numeric (score), seed 1203"
+  },
+  {
+   "id": "temporal-zh",
+   "title": "中文日期运算 — text noul",
+   "blurb": "同一技能家族的中文版本：中文日期格式、中文指令与判据 — the readout heads are language-agnostic by construction.",
+   "family": "temporal_numeric",
+   "image": null,
+   "gold": {
+    "q": "no"
+   },
+   "request": {
+    "state": {
+     "reference_date": "11月13日",
+     "schedule": "根据日程安排，产品发布恰好在 `reference_date` 之后 7 周，不早也不晚。",
+     "claimed_date": "2025/1/8"
+    },
+    "model": "kapteeni-v1.1c",
+    "questions": {
+     "q": {
+      "type": "noul",
+      "instructions": "`claimed_date` 是不是 `schedule` 所描述的那一天？",
+      "criteria": {
+       "true": "声称的日期就是所描述的日期",
+       "false": "声称的日期是另一个日期"
+      }
+     }
+    }
+   },
+   "provenance": "synth2zh temporal_numeric, seed 1204"
+  }
+ ]
+}

@@ -59,3 +59,50 @@ class MockModel:
         )
         out_tok = len(json.dumps(answers)) // 4
         return answers, {"input_tokens": in_tok, "output_tokens": out_tok}
+
+
+class MockV11C:
+    """The v1.1c interface mock: MockModel's content-keyed randomness,
+    image-aware. Answers derive from CONTENT ONLY — the state's image
+    participates through its byte hash (never the base64 spelling), so
+    the E1 invariants hold exactly as for the text mock. Runs without
+    torch or a GPU (the demo server's --mock mode and the test suites).
+    """
+
+    def __init__(self, seed: str = "kapteeni-v11c-mock"):
+        self.seed = seed
+
+    def evaluate(self, state, questions: dict):
+        from kapteeni.model_v11c import extract_image
+
+        pass_state, img = extract_image(state)
+        st = state_text(pass_state)
+        img_key = (hashlib.sha256(img.tobytes()).hexdigest()[:16]
+                   if img is not None else "-")
+        answers: dict = {}
+        for qid, q in questions.items():
+            ins = instructions_text(q["instructions"])
+            if q["type"] == "noul":
+                crit = json.dumps(q.get("criteria"), sort_keys=True,
+                                  ensure_ascii=False)
+                u = _unit(self.seed, "noul", st, img_key, ins, crit)
+                answers[qid] = contract.noul_answer(0.05 + 0.9 * u)
+            elif q["type"] == "choice":
+                scores = {}
+                for opt, desc in q["criteria"].items():
+                    u = _unit(self.seed, "choice", st, img_key, ins, opt,
+                              json.dumps(desc, ensure_ascii=False))
+                    scores[opt] = (u - 0.5) * 8.0
+                answers[qid] = contract.choice_answer(scores)
+            else:
+                scores = []
+                for i, lvl in enumerate(q["criteria"]):
+                    u = _unit(self.seed, "score", st, img_key, ins, str(i),
+                              json.dumps(lvl, ensure_ascii=False))
+                    scores.append((u - 0.5) * 8.0)
+                answers[qid] = contract.score_answer(scores, q["criteria"])
+        in_tok = len(st) // 4 + sum(
+            len(instructions_text(q["instructions"])) // 4
+            for q in questions.values()) + (399 if img is not None else 0)
+        out_tok = len(json.dumps(answers)) // 4
+        return answers, {"input_tokens": in_tok, "output_tokens": out_tok}

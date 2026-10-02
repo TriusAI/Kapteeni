@@ -1,10 +1,13 @@
 # Kapteeni — a Jev-compatible System One decision model
 
-**Status: v1 trained, evaluated & served as two variants** — kapteeni-v1-
-meticulous (conservative confidence; the default) and kapteeni-v1-intuit
-(sharper decisions on well-formed numeric/temporal/multi-step traffic).
-`docs/JEVBENCH.md` holds every benchmark number and the full experiment
-history; `docs/EVAL.md` the calibration report.
+**Status: two shipped lines.** The text flagship: **kapteeni-v1-meticulous**
+(conservative confidence; the default) and **kapteeni-v1-intuit** (sharper
+decisions on well-formed numeric/temporal/multi-step traffic). The multimodal
+line: **kapteeni-v1.1c** — one Qwen3.5-4B backbone answering noul/choice/score
+questions over states with **attached images**, in English and Chinese, all
+pre-registered gates passed (2026-10-02). `docs/JEVBENCH.md` holds every
+benchmark number and the full experiment history; `docs/EVAL.md` the
+calibration report.
 
 Jev (docs.typesafe.ai) is a *System One* decision model: you send a `state` plus
 typed questions and get back **calibrated probability distributions your code
@@ -166,6 +169,70 @@ every fix along the way); calibration report: `docs/EVAL.md`.
 | Calibration | "P=0.2 events fire ≈20% of the time" | temperature scaling per head; ECE/Brier measured on val + held-out datasets (E2) |
 | Independence | adding/removing questions never changes others | structural: passes are content-only, question ids never serialized (E1) |
 | Determinism | reference shows run-to-run std ≈ 0.01 | **fully deterministic** (documented improvement; ensemble noise is a future flag) |
+
+## The multimodal line: kapteeni-v1.1c (images + Chinese + text)
+
+One model, one wire contract: states may carry an **`image` field**
+(base64 PNG/JPEG) that the model sees natively; questions stay typed
+noul/choice/score and the readout heads are language- and
+modality-agnostic. Trained per `docs/PREREG-KAPTEENI-V11C.md` — the v1
+phase pipeline (multi-pass per-option judgment, distillation-weighted
+targets, group-CE in-loss, heads on the final hidden state, P1 heads →
+P2 LoRA+heads) ported to Qwen3.5-4B. One run, every pre-registered gate
+passed on the first reading:
+
+| gate | reading | bar |
+|---|---:|---:|
+| synth3-val (n=590, English image decisions) | **0.9661** | > 0.8068 (frozen base) |
+| synth3zh-val (n=204, Chinese image decisions; reported) | 0.9412 | — |
+| MNLI-noul (n=150, English text, never trained on) | 0.8800 | ≥ 0.84 |
+| OCNLI-noul (n=150, Chinese text, never trained on) | 0.8467 | ≥ 0.83 |
+| synth2zh-val (n=403, Chinese rule skills) | **0.9132** | ≥ 0.90 |
+| synth2-EN-val (n=609, English rule skills) | **0.9048** | ≥ 0.90 |
+| fitted ECE (noul / choice / score) | 0.024 / 0.018 / 0.069 | ≤ 0.10 |
+
+The 0.90 mastery bars had falsified every predecessor (v1.1 0.777;
+v1.1b 0.846/0.841 with MNLI erosion) and were never met by any prior
+configuration, including the text flagship's own phase pipeline (~0.81):
+the multi-pass judgment structure is what closed them — the monitor
+trajectory shows the rule skills climbing 0.70 → 0.90+ across the single
+mixed epoch with MNLI pinned at 0.84-0.89 throughout. Full history in
+`WORKLOG.md` (2026-09-29 → 2026-10-02) and the pre-reg's Outcome section.
+
+Serving constants: the per-primitive temperatures fitted on combined
+held-out val (`model_cache/kapteeni_v11c/final_gates.json` — the only
+constants fitted anywhere in the line, per the pre-registration).
+
+## Demo website (local)
+
+The v1.1c server ships with a self-contained demo page — pre-configured
+cases generated fresh from the training generators (gold answers exact
+by construction; no held-out rows are reused), served from the same
+origin so no CORS setup is needed:
+
+```bash
+# trained model (the ship configuration; needs the v1.1c artifacts + GPU)
+HF_HUB_OFFLINE=1 python3 -m kapteeni.serve_v11c --port 8002
+# then open http://localhost:8002/
+
+# interface dry-run without a GPU (mock model)
+python3 -m kapteeni.serve_v11c --mock --port 8002
+```
+
+The page renders each case's gold annotation next to the model's
+distribution (noul probability gauge, choice probability bars, score
+expectation over independently-judged levels), and the request JSON is
+editable before sending — the wire format is the same
+`POST /v1/systemone` everywhere. Demo cases live in
+`kapteeni/demo/cases.json` + `kapteeni/demo/images/` (committed;
+`scripts/make_demo.py` regenerates them deterministically from the
+generators, needs `data_cache/` present).
+
+Latency on the training box (Strix Halo iGPU): ~0.2 s for text-only
+requests, ~4-7 s per image question (the model re-attaches the image to
+every option/level pass — the same multi-pass structure it was trained
+and gated on; E1 independence is exact because each question is
+forwarded on its own).
 
 ## Layout
 

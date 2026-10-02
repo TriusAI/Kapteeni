@@ -615,3 +615,49 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
 - NEXT per the decision rule: extend serving with the `state.image`
   wire field and ship as kapteeni-v1.1c (serving work; see the
   v1.1/v1.1b pre-regs' identical ship clauses).
+
+## 2026-10-02 (continued) — SHIPPED: kapteeni-v1.1c serving + the demo
+## website
+
+- `state.image` wire extension: states may carry an `image` field
+  (base64 PNG/JPEG, bare or data-URI); the field serializes as the
+  "<attached>" placeholder the training states used, every other
+  state field passes through, and the image enters through the vision
+  path of every pass (kapteeni/model_v11c.py — extract_image +
+  question_passes are the torch-free, unit-tested core).
+- `kapteeni/serve_v11c.py`: the multimodal server — POST
+  /v1/systemone over the unchanged contract, GET /v1/models, plus the
+  demo website (GET / and /demo/*) served SAME-ORIGIN so the page needs
+  no CORS. `--mock` serves MockV11C (the image-aware mock: answers
+  keyed on image CONTENT via byte hash, never the base64 spelling) for
+  GPU-free dry-runs and the test suites. Accepted model names:
+  jev-latest, kapteeni-v1.1c.
+- Serving semantics worth recording: E1 independence is EXACT — each
+  question is forwarded on its own (a choice group shares one forward
+  for the in-loss softmax semantics), so adding/removing questions
+  cannot perturb another question at any decimal; the fp32 tower (the
+  NaN-diagnosis fix) is part of the served numerics; fitted
+  temperatures come from final_gates.json.
+- Demo website (`kapteeni/demo/index.html` + cases.json + images/): 9
+  pre-configured cases, ALL generated fresh from the training
+  generators (deterministic seeds 1101-1204; no train/val row reused,
+  no held-out content — the demo never touches the gate slices), each
+  carrying its gold-by-construction annotation rendered next to the
+  model's distribution. Five image cases (menu choice x2 + noul on one
+  state, invoice noul, seating choice, weather score, Chinese menu
+  choice) + four text cases (date arithmetic EN/zh, eligibility-chain
+  choice, binned urgency score). `scripts/make_demo.py` regenerates
+  everything deterministically.
+- Tests: 11 new (tests/test_serve_v11c.py — image extraction incl.
+  data-URI + error paths, content-keyed-not-spelling-keyed mock,
+  training-layout pass equality, E1 with images, HTTP end-to-end,
+  path-traversal guard); full suite 164 green.
+- Ship verification (the trained model, live, over all 9 demo cases):
+  9/11 answers agree with gold — menu 3/3 (conf 1.00 each), Chinese
+  menu correct, invoice noul P(true)=0.00 vs gold no, eligibility
+  chain correct; two honest misses (a weather count whose expectation
+  straddled the level boundary at score 3.006, one calibrated-hedge
+  zh text miss at P=0.72), both legible in the UI because gold is
+  shown. Latency: 0.2-19s per request on the iGPU box (per-question
+  forwards; image questions ~4-7s). README updated with the v1.1c
+  section + demo run instructions.
