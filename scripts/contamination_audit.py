@@ -18,10 +18,15 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+from kapteeni.build_data import data_dir  # noqa: E402
+
+DATA = Path(data_dir())  # KAPTEENI_DATA_DIR override (forge runs)
 BENCH = ROOT / "jevbench"
 N = 8  # shingle width in tokens, matches the benchmark's request conventions
 
@@ -87,12 +92,12 @@ def load_training() -> dict[str, set]:
     out: dict[str, set] = {}
     for name in ("boolq", "fever", "banking77", "clinc150", "helpsteer2",
                  "synth2", "synth2zh", "goemotions", "synth"):
-        for line in open(ROOT / f"data_cache/rows_{name}.jsonl",
+        for line in open(DATA / f"rows_{name}.jsonl",
                          encoding="utf-8"):
             r = json.loads(line)
             out[r["row_id"]] = shingles(_row_text(r))
     for ds in ("synth3", "synth3zh"):
-        for line in open(ROOT / f"data_cache/{ds}/items.jsonl",
+        for line in open(DATA / f"{ds}/items.jsonl",
                          encoding="utf-8"):
             r = json.loads(line)
             out[r["row_id"]] = shingles(_row_text(r))
@@ -102,7 +107,7 @@ def load_training() -> dict[str, set]:
 def load_ocnli() -> dict[str, set]:
     """The OCNLI gate slice (eval-only, CC BY-NC, never trained on)."""
     out = {}
-    for line in open(ROOT / "data_cache/rows_ocnli.jsonl", encoding="utf-8"):
+    for line in open(DATA / "rows_ocnli.jsonl", encoding="utf-8"):
         r = json.loads(line)
         out[r["row_id"]] = shingles(_row_text(r))
     return out
@@ -132,8 +137,57 @@ def _audit(name: str, gates: dict[str, set], train: dict[str, set],
             "hits": hits}
 
 
-def main() -> int:
+def load_feedback(paths: list[str]) -> dict[str, set]:
+    """User-feedback store files as EXTRA training-side surfaces: any
+    surface that might one day be trained on must be audited like the
+    generated rows (feedback corrections are future training data).
+    Records map to their state+question text via _feedback_text."""
+    import glob as _glob
+    out: dict[str, set] = {}
+    for pattern in paths:
+        files = sorted(_glob.glob(pattern))
+        if not files:
+            raise SystemExit(f"--feedback pattern matched nothing: {pattern}")
+        for fp in files:
+            for line in open(fp, encoding="utf-8"):
+                if not line.strip():
+                    continue
+                r = json.loads(line)
+                out[f"feedback:{r.get('id', '?')}"] = shingles(
+                    _feedback_text(r))
+    return out
+
+
+def _feedback_text(r: dict) -> str:
+    parts = []
+    st = r.get("state")
+    if st:
+        parts.append(st if isinstance(st, str) else json.dumps(
+            st, ensure_ascii=False))
+    q = r.get("question") or {}
+    if isinstance(q, dict):
+        parts.append(str(q.get("instructions", "")))
+    else:
+        parts.append(str(q))
+    return " ".join(p for p in parts if p)
+
+
+def main(argv=None) -> int:
+    import argparse
+    ap = argparse.ArgumentParser(
+        description="contamination audit: training surfaces vs JevBench "
+                    "public items + OCNLI gate rows")
+    ap.add_argument("--out", default=str(ROOT / "docs" /
+                                         "contamination_audit.json"),
+                    help="report path (default: docs/contamination_audit"
+                    ".json — the shipped record)")
+    ap.add_argument("--feedback", action="append", default=[],
+                    help="glob of feedback-store JSONL files to include "
+                    "as training-side surfaces (the forge passes the "
+                    "run's feedback store)")
+    args = ap.parse_args(argv)
     train = load_training()
+    train.update(load_feedback(args.feedback))
     bench = load_bench()
     ocnli = load_ocnli()
     res_bench = _audit("jevbench", bench, train, len(bench))
@@ -146,12 +200,15 @@ def main() -> int:
             "rows_helpsteer2", "rows_synth2", "rows_synth2zh",
             "synth3/items", "synth3zh/items"],
         "val_rows_excluded": True,
+        "feedback_surfaces": sorted({k.rsplit(":", 1)[0]
+                                     for k in train
+                                     if k.startswith("feedback:")}),
         "jevbench": res_bench,
         "ocnli": res_ocnli,
     }
-    (ROOT / "docs" / "contamination_audit.json").write_text(
+    Path(args.out).write_text(
         json.dumps(payload, indent=2, ensure_ascii=False))
-    print("wrote docs/contamination_audit.json")
+    print(f"wrote {args.out}")
     return 0
 
 

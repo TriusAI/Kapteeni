@@ -15,33 +15,35 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from kapteeni.build_data import expand_passes, is_val
+from kapteeni.build_data import data_dir, expand_passes, is_val
+
+DATA = data_dir()
 
 SPECS = [
     # (rows file, criteria file or None, opts cap, max train rows)
-    ("data_cache/rows_boolq.jsonl", None, 1, 0),
-    ("data_cache/rows_fever.jsonl", None, 1, 0),
-    ("data_cache/rows_synth.jsonl", None, 1, 0),
-    ("data_cache/rows_banking77.jsonl", "data_cache/crit_banking77.json", 24, 1200),
-    ("data_cache/rows_clinc150.jsonl", "data_cache/crit_clinc150.json", 16, 1200),
-    ("data_cache/rows_goemotions.jsonl", "data_cache/crit_goemotions.json", 16, 1200),
-    ("data_cache/rows_helpsteer2.jsonl", "data_cache/crit_helpsteer2.json", 5, 0),
+    (f"{DATA}/rows_boolq.jsonl", None, 1, 0),
+    (f"{DATA}/rows_fever.jsonl", None, 1, 0),
+    (f"{DATA}/rows_synth.jsonl", None, 1, 0),
+    (f"{DATA}/rows_banking77.jsonl", f"{DATA}/crit_banking77.json", 24, 1200),
+    (f"{DATA}/rows_clinc150.jsonl", f"{DATA}/crit_clinc150.json", 16, 1200),
+    (f"{DATA}/rows_goemotions.jsonl", f"{DATA}/crit_goemotions.json", 16, 1200),
+    (f"{DATA}/rows_helpsteer2.jsonl", f"{DATA}/crit_helpsteer2.json", 5, 0),
 ]
 
 
 def main() -> int:
-    out = Path("data_cache/passes_p2.jsonl")
+    out = Path(f"{DATA}/passes_p2.jsonl")
     total = 0
     with open(out, "w", encoding="utf-8") as f:
         for rows_path, crit_path, cap, max_rows in SPECS:
             rows = [json.loads(l) for l in open(rows_path, encoding="utf-8")]
             train = sorted([r for r in rows if not is_val(r["row_id"])],
-                           key=lambda r: r["row_id"])
+                            key=lambda r: r["row_id"])
             if max_rows:
                 train = train[:max_rows]
             soft = {}
             stem = rows_path.split("rows_")[1].split(".")[0]
-            soft_path = Path(f"data_cache/soft_{stem}.jsonl")
+            soft_path = Path(f"{DATA}/soft_{stem}.jsonl")
             if soft_path.exists():
                 for l in open(soft_path, encoding="utf-8"):
                     r = json.loads(l)

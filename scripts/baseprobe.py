@@ -34,12 +34,12 @@ ROOT = Path(__file__).resolve().parent.parent
 import sys
 sys.path.insert(0, str(ROOT))
 
-from kapteeni.build_data import is_val  # noqa: E402
+from kapteeni.build_data import data_dir, is_val  # noqa: E402
 from kapteeni.vl_format import (LETTERS, load_rows, synth3_example,  # noqa: E402
                                 text_example)
 
-SYNTH3 = ROOT / "data_cache" / "synth3" / "items.jsonl"
-IMG_DIR = str(ROOT / "data_cache" / "synth3" / "images")
+SYNTH3 = ROOT / data_dir() / "synth3" / "items.jsonl"
+IMG_DIR = str(ROOT / data_dir() / "synth3" / "images")
 
 
 def first_id(tok, s: str) -> int:
@@ -53,9 +53,9 @@ def build_slices():
     s3 = [synth3_example(r, IMG_DIR) for r in load_rows(str(SYNTH3))
           if is_val(r["row_id"])]
     mnli = [text_example(r, {})
-            for r in load_rows(str(ROOT / "data_cache/rows_mnli.jsonl"))[:150]]
+            for r in load_rows(str(ROOT / data_dir() / "rows_mnli.jsonl"))[:150]]
     ocnli = [text_example(r, {})
-             for r in load_rows(str(ROOT / "data_cache/rows_ocnli.jsonl"))[:150]]
+             for r in load_rows(str(ROOT / data_dir() / "rows_ocnli.jsonl"))[:150]]
     return {"synth3": tag(s3, "synth3"), "mnli": tag(mnli, "mnli"),
             "ocnli": tag(ocnli, "ocnli")}
 
@@ -181,7 +181,7 @@ def main() -> int:
     vals = [v for s in report["slices"].values() for v in s.values()]
     report["mean"] = round(sum(vals) / len(vals), 4)
     report["n"] = {k: len(v) for k, v in slices.items()}
-    out = ROOT / "data_cache" / "baseprobe"
+    out = ROOT / data_dir() / "baseprobe"
     out.mkdir(exist_ok=True)
     (out / f"{args.name}.json").write_text(
         json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")

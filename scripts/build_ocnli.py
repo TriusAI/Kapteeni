@@ -20,12 +20,17 @@ file order (deterministic), gate slice = first 150 (as with MNLI).
 from __future__ import annotations
 
 import json
+import sys
 from collections import Counter
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from kapteeni.build_data import data_dir  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
-SRC = ROOT / "data_cache" / "ocnli_dev.json"
-OUT = ROOT / "data_cache" / "rows_ocnli.jsonl"
+DATA = Path(data_dir())
+SRC = ROOT / DATA / "ocnli_dev.json"
+OUT = ROOT / DATA / "rows_ocnli.jsonl"
 
 N_ROWS = 500
 

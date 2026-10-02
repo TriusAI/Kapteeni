@@ -28,27 +28,30 @@ from pathlib import Path
 
 import torch
 
-from kapteeni.build_data import expand_passes, is_val
+from kapteeni.build_data import data_dir, expand_passes, is_val
 from kapteeni.serialize import (choice_option_pass, noul_pass,
                                 score_level_pass)
 
 # ------------------------------------------------------------------ sources
 
+DATA = data_dir()  # resolved at import: the forge sets KAPTEENI_DATA_DIR
+# per subprocess before this module loads; unset = the shipped layout.
+
 P2_REUSE = [  # the v1.2 union, byte-identical (train rows only inside)
-    "data_cache/passes_p2.jsonl",
-    "data_cache/passes_synth2.jsonl",
+    f"{DATA}/passes_p2.jsonl",
+    f"{DATA}/passes_synth2.jsonl",
 ]
 # passes_p2 row prefixes that P1 does NOT see (v0's P1 had four sources;
 # these joined at P2 in the v1 lineage and do the same here)
 P2_ONLY_PREFIXES = ("clinc150", "goemo", "synth-")
-SOFT = {"boolq": "data_cache/soft_boolq.jsonl",
-        "fever": "data_cache/soft_fever.jsonl"}
-CRITERIA = {"banking77": "data_cache/crit_banking77.json",
-            "helpsteer2": "data_cache/crit_helpsteer2.json",
-            "synth2": "data_cache/synth2_criteria.json",
-            "synth2zh": "data_cache/synth2zh_criteria.json"}
-IMG_DIRS = {"synth3": "data_cache/synth3/images",
-            "synth3zh": "data_cache/synth3zh/images"}
+SOFT = {"boolq": f"{DATA}/soft_boolq.jsonl",
+        "fever": f"{DATA}/soft_fever.jsonl"}
+CRITERIA = {"banking77": f"{DATA}/crit_banking77.json",
+            "helpsteer2": f"{DATA}/crit_helpsteer2.json",
+            "synth2": f"{DATA}/synth2_criteria.json",
+            "synth2zh": f"{DATA}/synth2zh_criteria.json"}
+IMG_DIRS = {"synth3": f"{DATA}/synth3/images",
+            "synth3zh": f"{DATA}/synth3zh/images"}
 # P1's sources (v0's four + the unified-line families); val slices for the
 # P1 temperature fit use the same per-source conventions (val rows carry
 # gold and FULL option sets)
@@ -65,7 +68,9 @@ def _load_json(path: str):
 
 
 def _soft_map(name: str) -> dict:
-    if name not in SOFT:
+    if name not in SOFT or not Path(SOFT[name]).exists():
+        # absent softs (a gold-only forge run: no teacher labels) fall
+        # back to gold targets, matching build_p2_passes' semantics
         return {}
     return {r["row_id"]: r for r in _load_rows(SOFT[name])}
 
@@ -113,7 +118,7 @@ def image_row_passes(row: dict, img_dir: str) -> list[dict]:
 def synth3_passes(ds: str, val: bool | None = None) -> list[dict]:
     """All synth3/synth3zh passes, or one split of them."""
     out = []
-    for row in _load_rows(f"data_cache/{ds}/items.jsonl"):
+    for row in _load_rows(f"{DATA}/{ds}/items.jsonl"):
         rv = is_val(row["row_id"])
         if val is None or rv == val:
             out.extend(image_row_passes(row, IMG_DIRS[ds]))
@@ -125,7 +130,7 @@ def text_source_passes(name: str, val: bool | None = None) -> list[dict]:
     carry gold + full option sets; train rows follow expand_passes' rules
     (soft teacher labels where they exist, 24-option deterministic
     subsets otherwise)."""
-    rows = [r for r in _load_rows(f"data_cache/rows_{name}.jsonl")
+    rows = [r for r in _load_rows(f"{DATA}/rows_{name}.jsonl")
             if val is None or is_val(r["row_id"]) == val]
     return [_add_image(r, None)
             for r in expand_passes(rows, _criteria_map(name), _soft_map(name))]
@@ -188,7 +193,7 @@ def gate_slice(name: str, limit: int = 0) -> list[dict]:
     (generation order, the v1.1-line convention); 0 = all of them.
     """
     if name in ("mnli", "ocnli"):
-        rows = _load_rows(f"data_cache/rows_{name}.jsonl")[:limit or 10**9]
+        rows = _load_rows(f"{DATA}/rows_{name}.jsonl")[:limit or 10**9]
         out = []
         for r in rows:
             out.append(dict(row_id=r["row_id"], qtype="noul", kind="noul",
@@ -198,14 +203,14 @@ def gate_slice(name: str, limit: int = 0) -> list[dict]:
                                            r["criteria"]), image=None))
         return out
     if name in ("synth3", "synth3zh"):
-        rows = [r for r in _load_rows(f"data_cache/{name}/items.jsonl")
+        rows = [r for r in _load_rows(f"{DATA}/{name}/items.jsonl")
                 if is_val(r["row_id"])][: limit or 10**9]
         out = []
         for row in rows:
             out.extend(image_row_passes(row, IMG_DIRS[name]))
         return out
     if name in ("synth2zh", "synth2"):
-        rows = [r for r in _load_rows(f"data_cache/rows_{name}.jsonl")
+        rows = [r for r in _load_rows(f"{DATA}/rows_{name}.jsonl")
                 if is_val(r["row_id"])][: limit or 10**9]
         return [_add_image(r, None)
                 for r in expand_passes(rows, _criteria_map(name), {})]

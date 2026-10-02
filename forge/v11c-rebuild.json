@@ -1,0 +1,33 @@
+{
+  "name": "v11c-rebuild",
+  "served_as": "kapteeni-v11c-rebuild",
+  "base": {"path": "model_cache/qwen3.5-4b", "hf_id": "Qwen/Qwen3.5-4B"},
+  "profile": "halo-96g",
+  "data": {
+    "synth": {"n": 4000, "seed": 11},
+    "synth2": {"n": 6300, "seed": 23},
+    "synth2zh": {"n": 4200, "seed": 71},
+    "synth3": {"rows": 6000, "seed": 41},
+    "synth3zh": {"rows": 2000, "seed": 53},
+    "hf_rows": {
+      "boolq": 2500, "fever": 1500, "mnli": 500, "banking77": 1800,
+      "clinc150": 3000, "goemotions": 3000, "helpsteer2": 1500
+    },
+    "distill": {"k": 5, "conc": 24, "teacher": "deepseek-v4-pro:cloud"},
+    "ocnli_dev": "data_cache/ocnli_dev.json",
+    "criteria_from": "data_cache"
+  },
+  "train": {
+    "lr": 0.0001, "epochs": 1, "token_budget": 8192, "seed": 0,
+    "gate_every": 300, "ckpt_every": 150
+  },
+  "gates": {
+    "synth3": {"cmp": ">", "value": 0.8068},
+    "mnli": {"cmp": ">=", "value": 0.84},
+    "ocnli": {"cmp": ">=", "value": 0.83},
+    "synth2zh": {"cmp": ">=", "value": 0.90},
+    "synth2": {"cmp": ">=", "value": 0.90},
+    "ece": {"cmp": "<=", "value": 0.10}
+  },
+  "strict_audit": true
+}

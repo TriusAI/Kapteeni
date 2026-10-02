@@ -1,0 +1,33 @@
+{
+  "name": "micro-smoke",
+  "served_as": "kapteeni-micro-smoke",
+  "base": {"path": "model_cache/qwen3.5-4b", "hf_id": "Qwen/Qwen3.5-4B"},
+  "profile": "halo-96g",
+  "data": {
+    "synth": {"n": 60, "seed": 11},
+    "synth2": {"n": 200, "seed": 23},
+    "synth2zh": {"n": 200, "seed": 71},
+    "synth3": {"rows": 200, "seed": 41},
+    "synth3zh": {"rows": 100, "seed": 53},
+    "hf_rows": {
+      "boolq": 60, "fever": 60, "mnli": 150, "banking77": 60,
+      "clinc150": 60, "goemotions": 60, "helpsteer2": 60
+    },
+    "distill": null,
+    "ocnli_dev": "data_cache/ocnli_dev.json",
+    "criteria_from": "data_cache"
+  },
+  "train": {
+    "lr": 0.0001, "epochs": 1, "token_budget": 4096, "seed": 0,
+    "limit": 100
+  },
+  "gates": {
+    "synth3": {"cmp": ">", "value": 0.8068},
+    "mnli": {"cmp": ">=", "value": 0.84},
+    "ocnli": {"cmp": ">=", "value": 0.83},
+    "synth2zh": {"cmp": ">=", "value": 0.90},
+    "synth2": {"cmp": ">=", "value": 0.90},
+    "ece": {"cmp": "<=", "value": 0.10}
+  },
+  "strict_audit": true
+}

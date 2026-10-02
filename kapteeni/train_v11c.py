@@ -35,6 +35,8 @@ from pathlib import Path
 import torch
 import torch.nn.functional as F
 
+from kapteeni.build_data import data_dir
+
 from kapteeni.build_data import is_val
 from kapteeni.heads import PassMLP
 from kapteeni.metrics import ece, fit_temperature
@@ -342,7 +344,7 @@ def p2(args) -> int:
             sched.step()
     print(f"batches/epoch: {len(batches)} (~{total_steps} steps)", flush=True)
 
-    mon_path = Path("data_cache/v11c_monitors.jsonl")
+    mon_path = Path(f"{data_dir()}/v11c_monitors.jsonl")
     best: dict[str, float] = {}
     t0, done_tok, base = time.time(), 0, 0
     n_skip = 0  # non-finite-h batches skipped (backstop; expect 0 with the
@@ -538,7 +540,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--phase1", action="store_true")
     ap.add_argument("--p2", action="store_true")
     ap.add_argument("--gates-only", action="store_true")
-    ap.add_argument("--emb", default="data_cache/v11c_emb.pt")
+    ap.add_argument("--emb", default=f"{data_dir()}/v11c_emb.pt")
     ap.add_argument("--bundle", default="model_cache/kapteeni_v11c_p1.pt")
     ap.add_argument("--out", default="model_cache/kapteeni_v11c")
     ap.add_argument("--base", default=BASE)

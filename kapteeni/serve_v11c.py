@@ -26,6 +26,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from kapteeni.contract import ContractError, validate_request
+from kapteeni.feedback import FeedbackError, FeedbackStore, new_record
 from kapteeni.mock import MockV11C
 
 DEFAULT_BASE = "model_cache/qwen3.5-4b"
@@ -47,8 +48,11 @@ MODEL_CARD = {
 }
 
 
-def make_handler(model, api_key: str | None, served_as: str):
+def make_handler(model, api_key: str | None, served_as: str,
+                 feedback_store: FeedbackStore | None = None):
     lock = threading.Lock()
+    fb_lock = threading.Lock()
+    accepted = {"jev-latest", served_as}
 
     class Handler(BaseHTTPRequestHandler):
         def _json(self, status: int, body: dict):
@@ -90,7 +94,7 @@ def make_handler(model, api_key: str | None, served_as: str):
                     {"name": "jev-latest",
                      "description": f"Alias for {served_as}.",
                      "release_date": MODEL_CARD["release_date"]},
-                    MODEL_CARD]})
+                    dict(MODEL_CARD, name=served_as)]})
                 return
             if path == "/":
                 self._file(DEMO_DIR / "index.html")
@@ -107,7 +111,10 @@ def make_handler(model, api_key: str | None, served_as: str):
             self._json(404, {"error": {"message": f"no route for {self.path}"}})
 
         def do_POST(self):
-            if self.path.rstrip("/") != "/v1/systemone":
+            path = self.path.split("?", 1)[0].rstrip("/")
+            if path == "/v1/feedback":
+                return self._feedback()
+            if path != "/v1/systemone":
                 self._json(404, {"error": {"message": f"no route for {self.path}"}})
                 return
             if not self._authed():
@@ -124,7 +131,7 @@ def make_handler(model, api_key: str | None, served_as: str):
             except ContractError as e:
                 self._json(e.status, e.body())
                 return
-            if req_model not in ACCEPTED_MODELS:
+            if req_model not in accepted:
                 self._json(422, {"error": {
                     "message": f"unknown model {req_model!r}", "field": "model"}})
                 return
@@ -156,6 +163,47 @@ def make_handler(model, api_key: str | None, served_as: str):
                 pass  # the notice is advisory; never fail a request on it
             self._json(200, resp)
 
+        def _feedback(self):
+            """POST /v1/feedback — capture a user's ground-truth for a
+            served answer into the deployment's feedback store (only if
+            the operator passed --feedback). The record enters review
+            pending; nothing feeds training directly (docs/FEEDBACK.md)."""
+            if not self._authed():
+                self._json(401, {"error": {"message": "missing or invalid API key"}})
+                return
+            if feedback_store is None:
+                self._json(404, {"error": {"message":
+                    "feedback collection is not enabled on this server "
+                    "(the operator did not pass --feedback)"}})
+                return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                body = json.loads(self.rfile.read(length) or b"null")
+            except (ValueError, json.JSONDecodeError):
+                self._json(422, {"error": {"message": "request body is not valid JSON"}})
+                return
+            try:
+                privacy = body.get("privacy") or {}
+                rec = new_record(
+                    served_as=served_as,
+                    kind=body["kind"],
+                    question=body["question"],
+                    state=body.get("state"),
+                    feedback=body["feedback"],
+                    prediction=body.get("prediction"),
+                    request_id=body.get("request_id"),
+                    served_revision=os.environ.get("KAPTEENI_SERVED_REVISION"),
+                    provenance=body.get("provenance"),
+                    retention_days=privacy.get("retention_days", 365),
+                    opt_out=bool(privacy.get("opt_out", False)))
+                with fb_lock:
+                    feedback_store.add(rec)
+            except (KeyError, FeedbackError) as e:
+                self._json(422, {"error": {"message": str(e)}})
+                return
+            self._json(200, {"id": rec["id"],
+                             "review": rec["review"]["status"]})
+
     return Handler
 
 
@@ -180,11 +228,22 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--heads", default="")
     ap.add_argument("--gates", default="",
                     help="final_gates.json (the fitted temperatures)")
+    ap.add_argument("--feedback", default="",
+                    help="path to a feedback-store JSONL; enables "
+                         "POST /v1/feedback (docs/FEEDBACK.md)")
     args = ap.parse_args(argv)
     if args.hf:
         from huggingface_hub import snapshot_download
 
         args.dist = snapshot_download(args.hf)
+
+    served_as = "kapteeni-v1.1c"
+    if args.dist:
+        dc = Path(args.dist) / "kapteeni-config.json"
+        if dc.exists():  # a forge-packed dist carries its own identity
+            served_as = json.loads(dc.read_text()).get(
+                "served_as", served_as)
+    feedback_store = FeedbackStore(args.feedback) if args.feedback else None
 
     adapter = args.adapter or f"{DEFAULT_OUT}/adapter"
     heads = args.heads or f"{DEFAULT_OUT}/heads.pt"
@@ -226,9 +285,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"warmup done in {time.time() - t0:.0f}s", flush=True)
     api_key = os.environ.get("KAPTEENI_API_KEY") or None
     httpd = ThreadingHTTPServer((args.host, args.port),
-                                make_handler(model, api_key, "kapteeni-v1.1c"))
+                                make_handler(model, api_key, served_as,
+                                             feedback_store))
     print(f"listening on http://{args.host}:{args.port} — API at "
-          f"/v1/systemone, demo website at /", flush=True)
+          f"/v1/systemone, demo website at /"
+          + (f", feedback capture at /v1/feedback -> {args.feedback}"
+             if feedback_store else ""), flush=True)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

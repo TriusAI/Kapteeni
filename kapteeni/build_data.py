@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import random
 import sys
 from pathlib import Path
@@ -35,6 +36,18 @@ from kapteeni.serialize import (
     score_level_pass,
     state_text,
 )
+
+
+def data_dir() -> str:
+    """The data-cache root every pipeline stage reads/writes under.
+
+    Per-process override via KAPTEENI_DATA_DIR lets a forge run stage its
+    own data in isolation (runs/<name>/data_cache) instead of the
+    shared checkout cache; unset, every stage sees the shipped
+    pipeline's data_cache/ layout, byte-for-byte the same paths as
+    before this helper existed.
+    """
+    return os.environ.get("KAPTEENI_DATA_DIR", "data_cache")
 
 RESPONSE_CHAR_CAP = 1200  # HelpSteer2 responses can be very long; cap for v0
 SCORE_ROWS = 500          # v0 pilot size (500 rows x 3 attributes)

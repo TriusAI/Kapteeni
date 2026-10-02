@@ -399,6 +399,34 @@ python3 -m kapteeni.p2_finalize                 # temps + blend, emits servable 
 python3 -m kapteeni.pack --served-as kapteeni-v1-meticulous   # -> ../kapteeni-v1-meticulous-dist
 ```
 
+## Build your own (the forge)
+
+The multimodal pipeline that produced kapteeni-v1.1c is chained by a
+config-driven runner — one JSON recipe fixes data volumes/seeds, the
+backbone, training constants and the six gate bars, and the tool
+enforces the discipline: the recipe (gates included) is hashed into a
+lockfile at `forge init` and every stage refuses to run on a drifted
+config; the contamination audit runs on the run's own data and stops
+the pipeline on any hit; the gates verdict is recorded immutably; and
+the pack is smoke-served from the shipped dist, not the repo checkout.
+
+```bash
+python3 -m kapteeni.forge init --config forge/v11c-rebuild.json   # the shipped recipe
+setsid nohup python3 -m kapteeni.forge run --config forge/v11c-rebuild.json \
+    --stage all > /tmp/forge.log 2>&1 &        # detached; hours
+python3 -m kapteeni.forge status --config forge/v11c-rebuild.json
+```
+
+`forge/micro-smoke.json` is a tiny end-to-end validation recipe
+(~1h on this class of box; it fails its real gates by design — it
+proves the machinery). Full guide: **docs/FORGE.md**.
+
+Serving deployments can also capture user ground truths (`POST
+/v1/feedback`, behind `serve_v11c --feedback <store.jsonl>`): validated,
+privacy-aware, review-gated records that a future pre-registered
+retrain can consume as ordinary (audited) training rows. Schema and
+policy: **docs/FEEDBACK.md**.
+
 ## Design decisions worth knowing
 
 1. **Noul is trained absolute** — a single sigmoid against soft targets, never

@@ -22,11 +22,11 @@ from pathlib import Path
 
 import httpx
 
-from kapteeni.build_data import is_val
+from kapteeni.build_data import data_dir, is_val
 from kapteeni.ollama import content_hash, ollama_chat, parse_json_loose
 from kapteeni.serialize import instructions_text, state_text
 
-CACHE_DIR = Path("data_cache/distill_cache")
+CACHE_DIR = Path(data_dir()) / "distill_cache"
 
 
 def judge_prompt(state, instructions, criteria) -> str:

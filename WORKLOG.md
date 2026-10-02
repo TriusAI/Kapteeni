@@ -916,3 +916,70 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   hash as history — that pin was superseded by the defect-resolution
   re-upload). The bench request #178's pinned-artifacts row is edited
   to the new revision in this session.
+
+## 2026-10-03 — the forge (build-your-own automation) + the feedback store
+
+Two builds today, answering the two standing questions: (1) can the
+fine-tuning endeavour be packed into an automated workflow, and
+(2) can the model "learn on the spot" from user feedback.
+
+**The forge** (`kapteeni/forge.py`, guide `docs/FORGE.md`): one JSON
+recipe drives the whole v1.1c chain — base -> gen -> sources -> expand
+-> audit -> precompute -> phase1 -> p2 -> gates -> pack -> smoke —
+with the discipline enforced by the tool: the recipe (gate bars
+included) is hashed into `runs/<name>/forge.lock` at init and every
+stage refuses a drifted config; the gates verdict is applied from the
+FROZEN bars and recorded immutably; the contamination audit runs on
+the run's own data and stops the pipeline on any hit; the pack is
+smoke-served from the SHIPPED dist (the v1.1c release defect class).
+Run isolation via a `KAPTEENI_DATA_DIR` env override honored by the
+stage modules (backward-compatible: unset = the shipped `data_cache/`
+layout, byte-identical; 9 modules touched, all 170 pre-existing tests
+stayed green, 194 with the new ones). Example recipes:
+`forge/v11c-rebuild.json` (the shipped recipe, volumes/seeds as
+published) and `forge/micro-smoke.json` (machinery validation).
+
+**Micro-smoke E2E validation (run of record, this box, ~1h wall):**
+gen/sources/expand/audit all clean — the audit read the run's isolated
+data through the env paths and found ZERO shingle hits; precompute +
+phase1 + p2 (100-row limit) ran; the gates read honestly FAIL on the
+real bars (synth3 0.58, mnli 0.43, ocnli 0.31, synth2zh 0.67, synth2
+0.55, ECE 0.21 — a 100-row model, as expected) and the chain HALTED
+BEFORE PACK exactly per design; pack + smoke then ran explicitly and
+**15/15 demo cases went clean through the shipped package** (served as
+`kapteeni-micro-smoke` with its own forge card — the dist names itself
+and states it is NOT v1.1c and NOT JevBench-evaluated). The validation
+caught three real machinery bugs before they could ship: `_soft_map`
+loaded teacher soft-label files unconditionally (gold-only runs
+crashed; now falls back, matching build_p2_passes' semantics), the
+forge didn't create `model_cache/` before the trainers wrote into it,
+and the smoke passed a relative dist path to a server launched with
+cwd=dist. The full `v11c-rebuild` recipe remains an ~overnight exercise
+for whoever wants the from-scratch reproducibility certificate.
+
+**The feedback store** (`kapteeni/feedback.py`, policy
+`docs/FEEDBACK.md`): schema-validated append-only JSONL of user ground
+truths (correction/confirmation/outcome/rejection) with prediction,
+provenance, privacy (redaction + retention + opt-out), review state
+(pending -> confirmed/rejected, human act), and CC BY-SA contributor
+terms. Served behind `serve_v11c --feedback <store.jsonl>` as
+POST /v1/feedback (404 when not enabled, 422 on bad records);
+serving also now honors a dist's own served_as/model identity instead
+of hardcoding kapteeni-v1.1c, and pack-stage demo cases are rewritten
+to the run's identity so a forge dist's demo works out of the box.
+The contamination audit gained --feedback globs (feedback surfaces are
+shingled as training-side surfaces — a correction quoting a benchmark
+item is a contamination incident, not training material) and --out.
+CONSUMING feedback into training is deliberately NOT built: that is a
+future pre-registration inheriting every rule that governs training
+(gates re-run before any adapter swap; mid-session weight swaps
+rejected as a serving design — they invalidate the calibration
+guarantee). 24 new tests (config validation, lock drift, verdict
+application, store roundtrips, endpoint happy/sad paths).
+
+- Stray server cleanup: the v1.1c demo server (port 8021) was killed
+  at the user's go-ahead to free VRAM for the validation runs; the text
+  servers remain down per the standing decision.
+- Known follow-ups: site manual pages for FORGE/FEEDBACK (docs/*.html
+  not yet updated); full v11c-rebuild run unclaimed; HF package sync
+  still blocked on a write token for this box.

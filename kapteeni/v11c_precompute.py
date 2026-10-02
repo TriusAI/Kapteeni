@@ -17,11 +17,12 @@ from pathlib import Path
 
 import torch
 
+from kapteeni.build_data import data_dir
 from kapteeni.v11c import (extract_h, p1_train_passes, p1_val_passes)
 
 MODEL = "model_cache/qwen3.5-4b"
-OUT = "data_cache/v11c_emb.pt"
-CKPT = Path("data_cache/v11c_precompute")
+OUT = f"{data_dir()}/v11c_emb.pt"
+CKPT = Path(f"{data_dir()}/v11c_precompute")
 
 
 def main(argv: list[str] | None = None) -> int:
