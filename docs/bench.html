@@ -84,6 +84,29 @@
             valid as scored. The frozen v1.5 method (904 open / 720 sealed) is
             not self-runnable from this repo and goes through Benchmark
             Heaven's submission pipeline.</p>
+          <h3>kapteeni-v1.1c — the pre-registered gates, all passed in its one
+            training run</h3>
+          <div class="table-scroll">
+            <table class="data">
+              <caption>These bars were deliberately hard; they had never been
+                met by any earlier training configuration of this pipeline.
+                The full history, including the runs that came close and
+                failed, is in
+                <a href="https://github.com/TriusAI/Kapteeni/blob/main/WORKLOG.md">WORKLOG.md</a>.</caption>
+              <thead>
+                <tr><th>Gate</th><th class="num">Reading</th><th>Bar</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>English image decisions (synth3-val, n=590)</td><td class="num"><strong>0.9661</strong></td><td>&gt; 0.8068 (the frozen backbone's own score)</td></tr>
+                <tr><td>Chinese image decisions (synth3zh-val, n=204)</td><td class="num">0.9412</td><td>reported, no bar</td></tr>
+                <tr><td>English text — never trained on (MNLI-noul, n=150)</td><td class="num">0.8800</td><td>&#8805; 0.84</td></tr>
+                <tr><td>Chinese text — never trained on (OCNLI-noul, n=150)</td><td class="num">0.8467</td><td>&#8805; 0.83</td></tr>
+                <tr><td>Chinese rule skills (synth2zh-val, n=403)</td><td class="num"><strong>0.9132</strong></td><td>&#8805; 0.90</td></tr>
+                <tr><td>English rule skills (synth2-EN-val, n=609)</td><td class="num"><strong>0.9048</strong></td><td>&#8805; 0.90</td></tr>
+                <tr><td>calibration after the fit (noul / choice / score)</td><td class="num">0.024 / 0.018 / 0.069</td><td>&#8804; 0.10 each</td></tr>
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <section class="doc-section" id="axes">

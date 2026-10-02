@@ -32,7 +32,7 @@
           <p class="lede">Kapteeni serves the TypeSafe System One wire format.
             Field names, bounds, and answer shapes mirror
             docs.typesafe.ai/api; the reference's example requests run unchanged
-            against this server (test E11). The HTTP layer is Python stdlib
+            against this server. The HTTP layer is Python stdlib
             only; the format itself lives in <code>kapteeni/contract.py</code> —
             deliberately framework-free and torch-free. The multimodal server
             (<code>kapteeni.serve_v11c</code>) serves the same contract with the
@@ -114,7 +114,7 @@
               <span class="spec-desc">map of question id to question; non-empty. Ids
                 must be non-empty strings. Ids never reach the model — passes are
                 content-only, so adding or removing a question never changes
-                another answer (E1).</span>
+                another answer.</span>
             </div>
           </div>
           <h3>state.image — measured limits (v1.1c, probed 2026-10-02)</h3>
@@ -129,7 +129,7 @@
                 <tr><td>Pixel budget</td><td>the Qwen3.5 processor downscales above ~16.78 MP to its pixel budget — up to ~16,300 vision tokens per image (tokens &#8776; pixels/1024; each covers a 32&#215;32 px merged patch).</td></tr>
                 <tr><td>Validated distribution</td><td>quality validated at 640&#215;640 (400 tokens) — larger resolutions are accepted but out-of-distribution, and per-question latency scales roughly linearly with pixels (a 6-option choice on a 12 MP photo is ~70k vision tokens of forward).</td></tr>
                 <tr><td>Bounding notice</td><td>any image above 640&#8202;px longest edge is bounded, and the response carries a plain-language <code>notice</code>: small text and fine detail may become unreadable, and accuracy may differ from the full-resolution result — precision-critical callers should pre-resize or crop to the region of interest. The demo page carries the same notice next to its attach control.</td></tr>
-                <tr><td>Usage accounting</td><td><code>usage.input_tokens</code> counts the real image tokens (<code>kapteeni.model_v11c.vision_tokens</code>, anchored to the measured grids; the 400-token image block is disclosed in the bench request).</td></tr>
+                <tr><td>Usage accounting</td><td><code>usage.input_tokens</code> counts the real image tokens (<code>kapteeni.model_v11c.vision_tokens</code>, anchored to the measured grids).</td></tr>
               </tbody>
             </table>
           </div>
@@ -277,9 +277,9 @@
             the test suite). Run-to-run behavior is fully deterministic — a
             documented improvement over the reference's std &#8776; 0.01; ensemble
             noise is a future flag. The multimodal line is no different: each
-            question is forwarded on its own with the image re-attached where
-            present (exact-E1 per-question forwards), which also costs
-            ~4&#8211;7 s per image question against ~0.2 s for a text-only
+            question is forwarded on its own — the image rides on every pass
+            where present — so independence stays exact, and an image
+            question costs ~4&#8211;7 s against ~0.2 s for a text-only
             pass.</p>
         </section>
 

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Kapteeni — a Jev-compatible System One decision model</title>
-    <meta name="description" content="Kapteeni reads a state and typed questions and returns calibrated probability distributions. Reference implementation of the TypeSafe System One wire format on a frozen Qwen3-4B backbone.">
+    <meta name="description" content="Kapteeni reads a state and typed questions and returns calibrated probability distributions. Reference implementation of the TypeSafe System One wire format on a frozen 4B backbone — text line and multimodal line (images, Chinese).">
     <link rel="icon" href="assets/trius-mark.svg" type="image/svg+xml">
     <link rel="stylesheet" href="style.css">
   </head>
@@ -37,188 +37,154 @@
             with trained readout heads: Qwen3-4B-Instruct-2507 on the text
             line, Qwen3.5-4B on the multimodal line (images and Chinese).</p>
           <p class="body-copy">Status: <em>two shipped lines.</em> The text
-            flagship — <em>kapteeni-v1-meticulous</em> (the default; conservative
-            confidence for unknown traffic) and <em>kapteeni-v1-intuit</em>
-            (sharper decisions on well-formed numeric, temporal, and multi-step
-            traffic). The multimodal line — <em>kapteeni-v1.1c</em>: images and
-            Chinese added, trained per pre-registration with every gate passed
-            (2026-10-02), and published on Hugging Face at pinned revision
-            <code>17affb8</code>. All three are under
-            <a href="https://huggingface.co/TriusAI">TriusAI</a> on Hugging Face.
-            Every benchmark number in this manual is a self-reported public-half
-            measurement; see <a href="bench.html">Benchmarks</a>.</p>
+            flagship — <em>kapteeni-v1-meticulous</em> (the default) and
+            <em>kapteeni-v1-intuit</em>. The multimodal line —
+            <em>kapteeni-v1.1c</em>, the only model here that can look at an
+            image. All three are published, ready to serve, with every
+            benchmark number measured on the public half of JevBench and the
+            caveats stated next to them; see
+            <a href="bench.html">Benchmarks</a>.</p>
         </section>
 
         <img class="ramp" src="assets/ramp.png" alt="" aria-hidden="true">
 
-        <section class="doc-section" id="models">
-          <h2><span class="sec-no">&#167;&#8202;1</span>Models on Hugging Face</h2>
-          <p>All three shipped on the
-            <a href="https://huggingface.co/TriusAI">TriusAI</a> org:</p>
-          <div class="table-scroll">
-            <table class="data">
-              <caption>The multimodal pack (2026-10-02) additionally carries the
-                serving package and the self-contained demo website. Weights
-                CC BY-SA 4.0, code/generators Apache-2.0, on every pack. The
-                publishing workflow:
-                <a href="https://github.com/TriusAI/Kapteeni/blob/main/docs/PUBLISH-HF.md">PUBLISH-HF.md</a>.</caption>
-              <thead>
-                <tr><th>Model</th><th>Line</th><th>Download</th><th>Note</th></tr>
-              </thead>
-              <tbody>
-                <tr><td>kapteeni-v1-meticulous</td><td>text — Qwen3-4B-Instruct-2507</td><td><a href="https://huggingface.co/TriusAI/kapteeni-v1-meticulous">huggingface.co/TriusAI/kapteeni-v1-meticulous</a></td><td>the default; conservative confidence</td></tr>
-                <tr><td>kapteeni-v1-intuit</td><td>text — Qwen3-4B-Instruct-2507</td><td><a href="https://huggingface.co/TriusAI/kapteeni-v1-intuit">huggingface.co/TriusAI/kapteeni-v1-intuit</a></td><td>sharper on well-formed numeric, temporal, and multi-step traffic</td></tr>
-                <tr><td>kapteeni-v1.1c</td><td>multimodal — Qwen3.5-4B; images + en/zh</td><td><a href="https://huggingface.co/TriusAI/kapteeni-v1.1c">huggingface.co/TriusAI/kapteeni-v1.1c</a></td><td>pinned at <code>17affb8</code> — cite the pin</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section class="doc-section" id="pipeline">
-          <h2><span class="sec-no">&#167;&#8202;2</span>Pipeline</h2>
+        <section class="doc-section" id="what">
+          <h2><span class="sec-no">&#167;&#8202;1</span>What it is</h2>
           <figure class="figure">
-            <pre><code>state + questions ──▶ serialize ──▶ Qwen3-4B (LoRA-adapted) ──▶ h_last per pass
-                                      (one pass per question/option/level)
-                 ──▶ readout heads + verbalizer blend ──▶ temperature ──▶ contract shaping
+            <pre><code>state + questions ──▶ serialize ──▶ 4B backbone ──▶ one forward pass per
+                                                    question / option / level
+                 ──▶ readout heads (+ native readout) ──▶ temperature ──▶ contract shaping
                  ──▶ {answers: typed + probabilities + confidence, usage}</code></pre>
-            <figcaption>One forward pass per question, option, or level; passes are
-              content-only, so question ids never reach the model and
-              adding or removing a question never changes another answer
-              (test E1).</figcaption>
+            <figcaption>Passes carry only the content, never the question ids —
+              so adding or removing a question never changes another
+              answer.</figcaption>
           </figure>
-          <p>The multimodal line keeps this exact structure: it adds only the
-            optional <code>state.image</code> field, and the image is re-attached
-            to every option/level pass — which is why E1 independence is exact
-            there too, and why an image question costs several forwards
-            (~4&#8211;7 s; text-only ~0.2 s on the training box).</p>
+          <p>That structure is the whole model. There is no generated text to
+            parse and no free-form reasoning step: every question becomes a
+            few forward passes through a frozen backbone, and readout heads
+            trained to produce calibrated numbers read the last hidden state
+            off each pass. The multimodal line keeps this exact structure —
+            it only adds the optional <code>image</code> field to the state,
+            re-attached on every pass so an image question is simply several
+            more forwards.</p>
+          <p>The behavior is the reference's, on purpose: its example requests
+            run unchanged. Noul answers are absolute probabilities (P(A) +
+            P(&#172;A) need not sum to 1 — that is how the reference behaves, and
+            this reproduction keeps it). Choice distributions sum to exactly
+            1. Score is the expectation over independently judged levels,
+            0-based. Two documented divergences: confidence is derived from
+            the distribution shape with our formula (1 &#8722; H(p)/ln K — the
+            reference's exact formula is not public), and the model is fully
+            deterministic where the reference shows small run-to-run
+            jitter.</p>
         </section>
 
-        <section class="doc-section" id="variants">
-          <h2><span class="sec-no">&#167;&#8202;3</span>The two text variants, side by side</h2>
-          <p>Both variants share one architecture and one wire format; they differ
-            in training data and serving constants, and are good at different
-            things.</p>
+        <section class="doc-section" id="usage">
+          <h2><span class="sec-no">&#167;&#8202;2</span>How to use it</h2>
+          <h3>Which model for your traffic</h3>
           <div class="table-scroll">
             <table class="data">
               <thead>
-                <tr><th></th><th class="num">v1-meticulous</th><th class="num">v1-intuit</th></tr>
+                <tr><th>Model</th><th>Reach for it when</th></tr>
               </thead>
               <tbody>
-                <tr><td>JevBench-style score (public half)</td><td class="num"><strong>65.71</strong></td><td class="num">63.18</td></tr>
-                <tr><td>Intelligence</td><td class="num">60.3</td><td class="num"><strong>61.1</strong></td></tr>
-                <tr><td>top-label ECE &#8594; Calibration</td><td class="num"><strong>0.0496 &#8594; 90.1</strong></td><td class="num">0.1196 &#8594; 76.1</td></tr>
-                <tr><td>public accuracy (easy / standard / hard)</td><td class="num">0.710 (1.000 / 0.889 / 0.469)</td><td class="num"><strong>0.714</strong> (1.000 / 0.903 / 0.468)</td></tr>
-                <tr><td>skills-slice accuracy (609 held-out items: temporal / multi-hop / policy)</td><td class="num">0.659</td><td class="num"><strong>0.814</strong></td></tr>
-                <tr><td>skills-slice ECE</td><td class="num">0.063</td><td class="num"><strong>0.043</strong></td></tr>
-                <tr><td>use when</td><td>traffic is unknown, messy, adversarial; confidence values are consumed downstream</td><td>traffic is well-formed (documents, policies, SLAs, forms) and needs numeric, temporal, or multi-step judgment</td></tr>
+                <tr><td>kapteeni-v1-meticulous</td><td>the traffic is unknown, messy, or adversarial — and your code consumes the confidence values</td></tr>
+                <tr><td>kapteeni-v1-intuit</td><td>the traffic is well-formed (documents, policies, SLAs, forms) and needs numeric, temporal, or multi-step judgment</td></tr>
+                <tr><td>kapteeni-v1.1c</td><td>the state includes an image — screenshots, scanned forms, signs, photographs — in English or Chinese</td></tr>
               </tbody>
             </table>
           </div>
-          <p class="note">Why two text variants: meticulous guards calibration
-            on unknown, messy, adversarial traffic; intuit commits to sharper
-            decisions where the traffic is well-formed — a deliberate trade,
-            stated rather than hidden behind one default. Download links:
-            <a href="#models">&#167;&#8202;1</a>.</p>
-          <h3>Download the text line</h3>
-          <p><a href="https://huggingface.co/TriusAI/kapteeni-v1-meticulous">kapteeni-v1-meticulous</a>
-            and <a href="https://huggingface.co/TriusAI/kapteeni-v1-intuit">kapteeni-v1-intuit</a>
-            are live on Hugging Face as self-contained distribution packs —
-            merged model, heads, serving constants, model card; nothing needs
-            to be trained or merged locally to serve them. All three published
-            models are gathered in <a href="#models">&#167;&#8202;1</a>.</p>
+          <h3>Serve it</h3>
+          <pre><code>cd kapteeni
+python3 -m pytest                          # 170+ tests, mock model, no GPU needed
+
+# text line — from Hugging Face, or a local distribution pack
+python3 -m kapteeni.serve --hf TriusAI/kapteeni-v1-meticulous --port 8000
+python3 -m kapteeni.serve --dist ./kapteeni-v1-meticulous-dist --port 8000
+python3 -m kapteeni.serve --dist ./kapteeni-v1-intuit-dist --port 8000
+
+# multimodal line — API takes state.image; demo site at /
+python3 -m kapteeni.serve_v11c --hf TriusAI/kapteeni-v1.1c --port 8002
+
+curl localhost:8000/v1/systemone -d '{"state":"...","model":"jev-latest","questions":{...}}'</code></pre>
+          <p>Requests may address any model by name, by the legacy
+            <code>kapteeni-v1</code>, or by the alias <code>jev-latest</code> —
+            all of them route to the model the server was launched with. The
+            response's <code>model</code> field always reports the real name.
+            Request shapes, error contract, and measured image limits are on
+            the <a href="api.html">Wire API</a> page.</p>
+          <h3>See it work (demo site)</h3>
+          <p>The multimodal server ships a self-contained demo page at its
+            root — the fastest way to see what this does. Fifteen
+            pre-configured cases: nine built fresh from the training
+            generators (their gold answers exact by construction) and six
+            real photographs, in English and Chinese. The photographs
+            hand-checked at 11 of 12 answers correct, with the one miss
+            documented in the record. Each case renders its gold annotation
+            next to the model's live distribution, and the request JSON is
+            editable before sending. Attach your own image: the page
+            downscales it before sending and shows the same advisory notice
+            the API returns.</p>
+          <p class="note">Latency on the training box (AMD Strix Halo iGPU):
+            ~0.2 s per text-only request, ~4&#8211;7 s per image question — the
+            image rides on every pass. Images: at most 8 MiB decoded PNG/JPEG,
+            quality validated at 640&#215;640, anything larger gets an advisory
+            notice on the response.</p>
         </section>
 
-        <section class="doc-section" id="multimodal">
-          <h2><span class="sec-no">&#167;&#8202;4</span>The multimodal line: kapteeni-v1.1c</h2>
-          <p>One model, one wire contract. A state may carry an
-            <code>image</code> field (base64 PNG/JPEG, at most 8 MiB decoded
-            bytes) that the backbone sees natively; questions stay typed
-            noul/choice/score, and the readout heads are language- and
-            modality-agnostic. English and Chinese are both trained and
-            gated.</p>
-          <p>Trained per the pre-registration
-            (<a href="https://github.com/TriusAI/Kapteeni/blob/main/docs/PREREG-KAPTEENI-V11C.md">PREREG-KAPTEENI-V11C.md</a>):
-            the v1 phase pipeline (multi-pass per-option judgment,
-            distillation-weighted targets, group-CE in-loss, heads on the final
-            hidden state, P1 heads &#8594; P2 LoRA+heads) ported to
-            Qwen3.5-4B. One run; every pre-registered gate passed on the first
-            reading:</p>
+        <section class="doc-section" id="models">
+          <h2><span class="sec-no">&#167;&#8202;3</span>Where to get it</h2>
           <div class="table-scroll">
             <table class="data">
-              <caption>The bars are deliberately hard — no earlier
-                configuration of this pipeline met them (full history:
-                WORKLOG.md); reaching them with one run is what the
-                multi-pass judgment structure buys.</caption>
+              <caption>Every pack is self-contained — merged model, heads,
+                serving constants, model card; the multimodal pack adds the
+                serving package and the demo website. Nothing needs to be
+                trained or merged locally. Weights CC BY-SA 4.0;
+                code/generators Apache-2.0.</caption>
               <thead>
-                <tr><th>Gate</th><th class="num">Reading</th><th>Bar</th></tr>
+                <tr><th>Model</th><th>Download</th><th>Note</th></tr>
               </thead>
               <tbody>
-                <tr><td>synth3-val (n=590, English image decisions)</td><td class="num"><strong>0.9661</strong></td><td>&gt; 0.8068 (frozen base)</td></tr>
-                <tr><td>synth3zh-val (n=204, Chinese image decisions)</td><td class="num">0.9412</td><td>reported, no bar</td></tr>
-                <tr><td>MNLI-noul (n=150, English text — never trained on)</td><td class="num">0.8800</td><td>&#8805; 0.84</td></tr>
-                <tr><td>OCNLI-noul (n=150, Chinese text — never trained on)</td><td class="num">0.8467</td><td>&#8805; 0.83</td></tr>
-                <tr><td>synth2zh-val (n=403, Chinese rule skills)</td><td class="num"><strong>0.9132</strong></td><td>&#8805; 0.90</td></tr>
-                <tr><td>synth2-EN-val (n=609, English rule skills)</td><td class="num"><strong>0.9048</strong></td><td>&#8805; 0.90</td></tr>
-                <tr><td>fitted ECE (noul / choice / score)</td><td class="num">0.024 / 0.018 / 0.069</td><td>&#8804; 0.10</td></tr>
+                <tr><td>kapteeni-v1-meticulous</td><td><a href="https://huggingface.co/TriusAI/kapteeni-v1-meticulous">huggingface.co/TriusAI/kapteeni-v1-meticulous</a></td><td>conservative confidence</td></tr>
+                <tr><td>kapteeni-v1-intuit</td><td><a href="https://huggingface.co/TriusAI/kapteeni-v1-intuit">huggingface.co/TriusAI/kapteeni-v1-intuit</a></td><td>sharper decisions</td></tr>
+                <tr><td>kapteeni-v1.1c</td><td><a href="https://huggingface.co/TriusAI/kapteeni-v1.1c">huggingface.co/TriusAI/kapteeni-v1.1c</a></td><td>frozen build <code>17affb8</code></td></tr>
               </tbody>
             </table>
           </div>
-          <p>JevBench public half through the released pack: composite 63.72,
-            Intelligence 68.33, ECE 0.0984 — read honestly on the
-            <a href="bench.html">Benchmarks</a> page (the composite is not
-            separable from v1 at n=231; the separable claims are the hard-tier
-            jump, the accuracy gain, and the image/Chinese capability). The
-            serving constants — per-primitive temperatures fitted on combined
-            held-out val — are the only constants fitted anywhere in the
-            line.</p>
-          <p>Published pinned at revision <code>17affb8</code> — cite the pin;
-            repo main may advance past it for card-text and doc updates only
-            (weights and serving constants are frozen at the snapshot). The
-            pack contents and download links are gathered in
-            <a href="#models">&#167;&#8202;1</a>.</p>
-          <h3>Demo website</h3>
-          <p>The v1.1c server ships a self-contained, same-origin demo page
-            (open the server root): 15 pre-configured cases — nine generated
-            fresh from the training generators with gold answers exact by
-            construction, six real photographs hand-checked (12 of 13 checked
-            answers correct, one out-of-distribution miss documented honestly).
-            Each case renders its gold annotation next to the model's
-            distribution; the request JSON is editable before sending — the
-            wire format is the same <code>POST /v1/systemone</code> everywhere.
-            Demo cases live in <code>kapteeni/demo/</code> (committed;
-            <code>scripts/make_demo.py</code> regenerates them
-            deterministically).</p>
-          <p>Measured image handling, briefly: quality is validated at
-            640&#215;640 (400 tokens); anything above a 640&#8202;px longest edge is
-            bounded to that distribution and the response carries a
-            plain-language <code>notice</code> saying small text and fine
-            detail may be lost. The full measured limits are on the
-            <a href="api.html">Wire API</a> page.</p>
         </section>
 
-        <section class="doc-section" id="replicated">
-          <h2><span class="sec-no">&#167;&#8202;5</span>What is replicated</h2>
+        <section class="doc-section" id="quality">
+          <h2><span class="sec-no">&#167;&#8202;4</span>How good it is</h2>
           <div class="table-scroll">
             <table class="data">
+              <caption>JevBench v1.4 public half — 231 items, official scoring
+                code, through the live servers. Self-reported; no placement
+                claims.</caption>
               <thead>
-                <tr><th>Aspect</th><th>Reference behavior</th><th>Kapteeni</th></tr>
+                <tr><th></th><th class="num">v1-meticulous</th><th class="num">v1-intuit</th><th class="num">v1.1c</th></tr>
               </thead>
               <tbody>
-                <tr><td>API</td><td><code>POST /v1/systemone</code>, <code>GET /v1/models</code></td><td>same wire format; docs' examples run unchanged (E11)</td></tr>
-                <tr><td>Noul</td><td>absolute P(true) &#8712; [0,1]; no confidence field</td><td>sigmoid head, BCE on teacher soft labels — <strong>absolute</strong> (E5: P(A)+P(&#172;A) &#8800; 1)</td></tr>
-                <tr><td>Choice</td><td>relative: probabilities sum to exactly 1</td><td>per-option scores, softmax over the group, exact-1 decimal sum</td></tr>
-                <tr><td>Score</td><td>independent levels; score = expectation (can be fractional)</td><td>per-level BCE head, normalized at the API layer; legend echoes levels</td></tr>
-                <tr><td>Confidence</td><td>derived from distribution shape</td><td>1 &#8722; H(p)/ln K, floored (<strong>documented divergence</strong>: the reference's formula is not public)</td></tr>
-                <tr><td>Calibration</td><td>"P=0.2 events fire &#8776;20% of the time"</td><td>temperature scaling per head; ECE/Brier measured on val + held-out datasets (E2)</td></tr>
-                <tr><td>Independence</td><td>adding/removing questions never changes others</td><td>structural: passes are content-only, question ids never serialized (E1)</td></tr>
-                <tr><td>Determinism</td><td>reference shows run-to-run std &#8776; 0.01</td><td><strong>fully deterministic</strong> (documented improvement; ensemble noise is a future flag)</td></tr>
+                <tr><td>Score</td><td class="num"><strong>65.71</strong></td><td class="num">63.18</td><td class="num">63.72</td></tr>
+                <tr><td>Intelligence</td><td class="num">60.3</td><td class="num">61.1</td><td class="num"><strong>68.33</strong></td></tr>
+                <tr><td>top-label ECE &#8594; Calibration</td><td class="num"><strong>0.0496 &#8594; 90.1</strong></td><td class="num">0.1196 &#8594; 76.1</td><td class="num">0.0984 &#8594; 80.3</td></tr>
+                <tr><td>public accuracy (easy / standard / hard)</td><td class="num">0.710 (1.000 / 0.889 / 0.469)</td><td class="num">0.714 (1.000 / 0.903 / 0.468)</td><td class="num"><strong>0.766</strong> (1.000 / 0.931 / 0.559)</td></tr>
               </tbody>
             </table>
           </div>
+          <p>Read honestly: at n=231 the composite gap between the multimodal
+            line and the flagship (63.72 vs 65.71) is inside the run-to-run
+            &#177;5.9pt interval — the claim is <em>not separable</em>, not
+            better or worse. What is separately true: accuracy 0.766
+            (+5.6pt), hard tier 0.559 (+9.0pt), and v1.1c's image capability.
+            Where the targeted skills moved: multi_hop 0.278 &#8594; 0.667,
+            long_policy +10.5pt. The full story — the v1.1c gate table,
+            per-family movements, calibration, the noise floor, and
+            reproducibility — is on the <a href="bench.html">Benchmarks</a>
+            page.</p>
         </section>
 
         <section class="doc-section" id="design">
-          <h2><span class="sec-no">&#167;&#8202;6</span>Design decisions</h2>
+          <h2><span class="sec-no">&#167;&#8202;5</span>Design decisions</h2>
           <ol>
             <li><strong>Noul is trained absolute</strong> — a single sigmoid against
               soft targets, never a yes/no softmax pair. A complement-consistent
@@ -252,58 +218,35 @@
           </ol>
         </section>
 
-        <section class="doc-section" id="quickstart">
-          <h2><span class="sec-no">&#167;&#8202;7</span>Quickstart</h2>
-          <pre><code>cd kapteeni
-python3 -m pytest                          # 170+ tests, mock model, no GPU needed
-
-# serve a text variant (from Hugging Face, or a local distribution pack)
-python3 -m kapteeni.serve --hf TriusAI/kapteeni-v1-meticulous --port 8000
-python3 -m kapteeni.serve --dist ./kapteeni-v1-meticulous-dist --port 8000
-python3 -m kapteeni.serve --dist ./kapteeni-v1-intuit-dist --port 8000
-
-# serve the multimodal line (API takes state.image; demo site at /)
-python3 -m kapteeni.serve_v11c --hf TriusAI/kapteeni-v1.1c --port 8002
-
-curl localhost:8000/v1/systemone -d '{"state":"...","model":"jev-latest","questions":{...}}'</code></pre>
-          <p>Requests on the text server may address either variant by name, by
-            the legacy <code>kapteeni-v1</code>, or by the wire-compat alias
-            <code>jev-latest</code>; the multimodal server accepts
-            <code>jev-latest</code> and <code>kapteeni-v1.1c</code>. Responses
-            always report the served line's real name. The full request and
-            answer shapes are on the <a href="api.html">Wire API</a> page.</p>
-        </section>
-
-        
-
         <section class="doc-section" id="layout">
-          <h2><span class="sec-no">&#167;&#8202;8</span>Repository layout</h2>
+          <h2><span class="sec-no">&#167;&#8202;6</span>Repository layout</h2>
           <ul class="modules">
             <li><span class="mod">kapteeni/contract.py</span><span class="mod-desc">the wire format as executable code — validation, answer shaping, confidence, exact-1 probability sums</span></li>
             <li><span class="mod">kapteeni/serialize.py</span><span class="mod-desc">pass serialization (state JSON text + <code>[noul]</code>/<code>[choice]</code>/<code>[score]</code> suffixes; ids never serialized)</span></li>
-            <li><span class="mod">kapteeni/backbone.py</span><span class="mod-desc">frozen Qwen3-4B-Instruct-2507 (bf16/ROCm), batched <code>h_last</code> precompute with resume</span></li>
+            <li><span class="mod">kapteeni/backbone.py</span><span class="mod-desc">frozen text-line backbone (bf16/ROCm), batched <code>h_last</code> precompute with resume</span></li>
             <li><span class="mod">kapteeni/heads.py · train.py</span><span class="mod-desc">per-primitive readout heads, proper-scoring losses (BCE/CE, soft targets), per-head temperature fit</span></li>
             <li><span class="mod">kapteeni/build_data.py · criteria.py · distill.py</span><span class="mod-desc">datasets &#8594; rows &#8594; passes; teacher-written rubrics; k-sample soft labels</span></li>
             <li><span class="mod">kapteeni/verbalizer.py</span><span class="mod-desc">the backbone's native decision readout, blended with the trained heads</span></li>
             <li><span class="mod">kapteeni/model.py · serve.py</span><span class="mod-desc">text-line runtime model + stdlib HTTP server</span></li>
-            <li><span class="mod">kapteeni/model_v11c.py · serve_v11c.py</span><span class="mod-desc">multimodal runtime + server: <code>state.image</code>, same-origin demo site at <code>/</code>, exact-E1 per-question forwards</span></li>
-            <li><span class="mod">kapteeni/pack.py · pack_v11c.py</span><span class="mod-desc">build the self-contained distribution packs — merged model, heads, serving constants, model card (+ demo website for v1.1c)</span></li>
+            <li><span class="mod">kapteeni/model_v11c.py · serve_v11c.py</span><span class="mod-desc">multimodal runtime + server: <code>state.image</code>, same-origin demo site at <code>/</code>, one forward per question with the image re-attached</span></li>
+            <li><span class="mod">kapteeni/pack.py · pack_v11c.py</span><span class="mod-desc">build the self-contained distribution packs — merged model, heads, serving constants, model card (+ demo website for the multimodal line)</span></li>
             <li><span class="mod">kapteeni/committee.py</span><span class="mod-desc">output-averaging of two served variants (<code>kapteeni-v1-committee</code>)</span></li>
             <li><span class="mod">kapteeni/p2_finalize.py</span><span class="mod-desc">fits final temperatures and blend constants; emits a servable bundle</span></li>
             <li><span class="mod">kapteeni/demo/</span><span class="mod-desc">demo cases + images, committed; <code>scripts/make_demo.py</code> regenerates them deterministically from the generators</span></li>
-            <li><span class="mod">tests/</span><span class="mod-desc">E1 (parity), E5 (asymmetry), E6 (score semantics), E11 (schema, end-to-end over HTTP); the suites run against the mock by default and against the trained model via <code>KAPTEENI_TEST_BUNDLE=</code></span></li>
+            <li><span class="mod">tests/</span><span class="mod-desc">parity, asymmetry, score-semantics, and schema/end-to-end suites; the tests run against the mock by default and against the trained model via <code>KAPTEENI_TEST_BUNDLE=</code></span></li>
             <li><span class="mod"><span class="dim">remaining modules</span></span><span class="mod-desc"><span class="dim">data synthesis and experiment harnesses (synth, synth2(+zh), synth3(+families/zh/gfx), familyval, fit_diverse, evalx, report, metrics, mock, ollama) — see <a href="https://github.com/TriusAI/Kapteeni/blob/main/WORKLOG.md">WORKLOG.md</a></span></span></li>
           </ul>
         </section>
 
         <section class="doc-section" id="license">
-          <h2><span class="sec-no">&#167;&#8202;9</span>License</h2>
+          <h2><span class="sec-no">&#167;&#8202;7</span>License</h2>
           <ul>
             <li><strong>Code, docs, generators:</strong> Apache-2.0
               (<a href="https://github.com/TriusAI/Kapteeni/blob/main/LICENSE">LICENSE</a>)
-              — matching the Apache-2.0 base model, Qwen3-4B-Instruct-2507.</li>
-            <li><strong>Trained weights from this pipeline:</strong> CC BY-SA 4.0,
-              with the full training-data provenance and attribution guidance in
+              — matching the Apache-2.0 base models, Qwen3-4B-Instruct-2507 and
+              Qwen3.5-4B.</li>
+            <li><strong>Trained weights:</strong> CC BY-SA 4.0, with the full
+              training-data provenance and attribution guidance in
               <a href="https://github.com/TriusAI/Kapteeni/blob/main/WEIGHTS-LICENSE.md">WEIGHTS-LICENSE.md</a>
               (the ShareAlike term comes from MultiNLI and the underlying FEVER
               annotations).</li>
