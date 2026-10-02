@@ -805,3 +805,40 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   Heaven's own pipeline for an official sealed+v1.5 measurement
   (text and/or ImageJevBench — the model is the repo's first
   image-capable entrant for an IMAGE benchmark).
+
+## 2026-10-02 (night, continued) — kapteeni-v1.1c PUBLISHED + submitted
+## for both benchmarks
+
+- User uploaded the pack to https://huggingface.co/TriusAI/kapteeni-v1.1c
+  (verified via the HF API through the local proxy: public, 69 files —
+  the full pack incl. the kapteeni/ package + demo; card tags resolved:
+  license cc-by-sa-4.0, base Qwen/Qwen3.5-4B, en/zh,
+  image-text-to-text).
+- **Pinned revision: 17affb8670dcf466550a755bfd78a19b3dce615d** — the
+  hash any 1.1c citation/bench reference must carry.
+- README updated: the 1.1c line headlined as published + --hf serving
+  line in the Run section + the published-link paragraph (mirroring
+  the text variants' published-links paragraph); PUBLISH-HF.md section
+  6 records the upload + pin.
+- Bench submission: [bench request] posted for BOTH benchmarks —
+  github.com/fstandhartinger/jevbench#178 (7,031 chars; the image-side
+  facts follow Eikos's #175 template — the wire extension, the 640px
+  bounding DISCLOSED as load-bearing with its accuracy caveat, single
+  image per request, usage semantics incl. 400 tokens/image block;
+  the text side follows our #102 template — the run of record on the
+  newest clone through the released pack with the identity check
+  177/231 at tier split 48-67-62; context tables: gates, per-family
+  multi_hop 0.278 -> 0.667; contamination disclosed honestly — the
+  text audit's zero hits carry; ImageJevBench items were never
+  item-level auditable since neither keys nor items are distributed).
+  All pinned numbers verified present in the posted body (rev hash,
+  177/231, tier split, gate table, family movements).
+- The submission is the established flow (their team runs the sealed
+  half + the official v1.5/ImageJev protocols themselves and "only
+  make benchmark claims after our own run"); the web form
+  (benchmarkheaven.com/submit) is the alternative the maintainer may
+  prefer — not used: it is a Next.js server-action form with no plain
+  POST target and requires a contact email we do not hold.
+- Note for the maintainers in the thread: the repo's main may advance
+  past the pin (card-text and doc updates only; weights + serving
+  constants frozen at the snapshot), consistent with #102's note.
