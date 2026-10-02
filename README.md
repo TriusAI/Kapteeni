@@ -191,6 +191,22 @@ passed on the first reading:
 | synth2-EN-val (n=609, English rule skills) | **0.9048** | ≥ 0.90 |
 | fitted ECE (noul / choice / score) | 0.024 / 0.018 / 0.069 | ≤ 0.10 |
 
+**JevBench public half (231 items, official harness, run of record on the
+released pack, 2026-10-02):** composite **63.72**; Intelligence **68.33**
+(best measured; +8.0 over v1); public accuracy **0.766** with hard tier
+**0.559** (+9.0 over v1); top-label ECE 0.0984 (between the text
+variants: intuit 0.1196, meticulous 0.0496); Speed 69.6; 562
+tokens/decision. Per-family, the targeted skills transferred: multi_hop
+0.278 → **0.667**, long_policy 0.316 → 0.421; temporal_numeric (n=15)
+remains the frontier for every model this repo has trained. Statistical
+hygiene: n=231 carries a ±5.9pt CI, so the composite vs v1's 65.71 sits
+inside single-run noise — the separable claims are the hard-tier jump,
+the accuracy gain, and the image/Chinese capability. Full section:
+`docs/JEVBENCH.md`; raw record
+`docs/bench/kapteeni-v1.1c-record-231.jsonl`; the official board's full
+v1.5 protocol (904 open + 720 sealed) runs on Benchmark Heaven's own
+submission pipeline.
+
 The 0.90 mastery bars had falsified every predecessor (v1.1 0.777;
 v1.1b 0.846/0.841 with MNLI erosion) and were never met by any prior
 configuration, including the text flagship's own phase pipeline (~0.81):

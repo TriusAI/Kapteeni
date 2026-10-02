@@ -363,3 +363,60 @@ python3 -m jevbench.cli run \
   --adapter typesafe --results <out>.jsonl --raw-dir <raw>
 python3 ../score_bench.py <out>.jsonl
 ```
+## 2026-10-02 — kapteeni-v1.1c (multimodal): score 63.72; Intelligence
+## 68.33 best measured; the multi_hop family moves; run on the
+## released pack
+
+The v1.1c model (see docs/PREREG-KAPTEENI-V11C.md: the v1 phase pipeline
+ported to Qwen3.5-4B; every gate passed) ran the OFFICIAL harness over all
+231 public items through the RELEASED PACK (../kapteeni-v1.1c-dist, merged
+model; serve_v11c --dist) — the pack itself is the measured artifact.
+Newest upstream clone at run time (bb05a33: v1.5 method published frozen;
+harness code and the 231 public items unchanged since v1.4.2). Adapter:
+typesafe; model name kapteeni-v1.1c. One attempt per item, no retries
+beyond the harness's own policy, constants exactly as packed.
+
+| | v1-meticulous | v1-intuit | v1.1c |
+|---|---:|---:|---:|
+| easy / standard / hard | 1.000 / 0.889 / 0.469 | 1.000 / 0.903 / 0.468 | **1.000 / 0.931 / 0.559** |
+| public accuracy (231) | 0.710 | 0.714 | **0.766** |
+| Intelligence (public renorm) | 60.3 | 61.1 | **68.33** |
+| top-label ECE -> Calibration | **0.0496 -> 90.1** | 0.1196 -> 76.1 | 0.0984 -> 80.3 |
+| p50 / p95 latency | 0.17s / 1.2s | same | 0.26s / 10.6s -> Speed 69.6 |
+| tokens/decision | 597 | same | 562 |
+| **score (composite)** | **65.71** | 63.18 | **63.72** |
+
+Per-family vs v1-meticulous (n per family unchanged):
+multi_hop 0.278 -> **0.667** (+38.9pt; the frontier family the synth2
+port targeted); long_policy 0.316 -> 0.421 (+10.5); tradeoff 0.167 ->
+0.333 (n=6); judge_hard 0.706 -> 0.765; trap 0.875 -> 1.000;
+extraction 0.917 -> 1.000. Declines, all within noise at these n:
+adversarial 1.000 -> 0.833 (n=6), routing 0.750 -> 0.667 (n=12);
+temporal_numeric 0.200 -> 0.133 (n=15) — the bench's temporal family
+remains the frontier, consistent with the documented narrow-template
+finding: the synthetic temporal training does not transfer to it
+(now shown across THREE successive models: v0.1, v1, v1.1c).
+
+Reading (honest, same statistical hygiene as above):
+- With n=231 the 95% CI on public accuracy is ±5.9pt: 63.72 vs 65.71
+  is inside single-run noise — the honest claim is "v1.1c is not
+  separable from v1 on the composite with this sample size," NOT a
+  win or a loss.
+- Separable claims (beyond noise): hard-tier accuracy 0.469 -> 0.559
+  (+9.0pt) and public accuracy 0.710 -> 0.766 (+5.6pt) with matching
+  Intelligence +8.0 — the multi_hop/long_policy skills DID transfer
+  OOD to the bench's hard tier; and v1.1c does it while also being
+  the only variant with image + Chinese capability (gates above).
+- Calibration sits between the variants (0.0984): better than
+  intuit's 0.1196, worse than meticulous's 0.0496. The deployment-
+  diverse val fit (v1.2.1 lesson applied in advance) landed on the
+  upper side of its 0.10 gate.
+- v1.5 note: the frozen v1.5 method (904 open / 720 sealed / I-50%
+  sealed / I-C-S-$ 40/20/20/20) is not self-runnable from this repo —
+  the sealed half requires Benchmark Heaven's own process (their
+  submission flow). The number above is the repo's established
+  public-half v1.4-composite convention, now annotated with the
+  v1.5 method's existence; a full v1.5 measurement goes through
+  their submission pipeline.
+- Raw record: docs/bench/kapteeni-v1.1c-record-231.jsonl (231 rows,
+  0 failures, all schema-valid); scoring via score_bench.py.

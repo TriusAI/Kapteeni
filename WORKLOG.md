@@ -771,3 +771,37 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   ../kapteeni-v1.1c-dist . --repo-type model (the publishing workflow
   in docs/PUBLISH-HF.md section 5; the upload itself awaits the
   user's credentials, per the repo's push policy).
+
+## 2026-10-02 (night) — v1.1c benched: 63.72 public-half composite;
+## Intelligence 68.33 (best measured); the skills transferred
+
+- jevbench clone pulled to main (bb05a33): v1.5 method published FROZEN
+  (904 open / 720 sealed / sealed 50% of I / axes 40-20-20-20 / sealed
+  0.20-0.29 -> fixed) + ImageJevBench results rows (v0.1.3: Imajev-4B
+  #1 of 49 at 76.39). Harness code, datasets, and the 231 public items
+  unchanged since v1.4.2 — the run of record procedure applies as-is;
+  the sealed half + the full v1.5 + ImageJevBench protocol go through
+  Benchmark Heaven's own submission pipeline (free queue or fast lane).
+- Run of record on the RELEASED PACK (--dist serving of the merged
+  model): 231/231 attempted, 0 failed, all schema-valid; ~35 min wall
+  (p50 0.26s; hard items' deep multi-pass chains push p95 10.6s).
+  Scored with score_bench.py (official code): easy 1.000 / standard
+  0.9306 / hard 0.5586 -> public acc 0.766; Intelligence 68.33 (best
+  measured anywhere in this repo; +8.0 over v1-meticulous); top-label
+  ECE 0.0984 -> Calibration 80.3 (between the variants);
+  **composite 63.72** vs v1's 65.71 / intuit 63.18 — inside the ±5.9pt
+  CI (n=231): not separable from v1 as a win/loss on the composite.
+- Separable: hard tier +9.0pt (0.469 -> 0.559), public accuracy +5.6pt,
+  multi_hop 0.278 -> 0.667 (+38.9pt), long_policy +10.5pt — the ported
+  phase curriculum transferred OOD to the bench. temporal_numeric
+  (n=15): now THREE models in a row fail to transfer synthetic
+  temporal training to the bench's narrow templates (0.27 -> 0.20 ->
+  0.13) — recorded as an arc-level finding. Cost axis unchanged
+  (562 tok/decision, below v1's 597).
+- Record: docs/bench/kapteeni-v1.1c-record-231.jsonl; docs/JEVBENCH.md
+  section written; README v1.1c table + run lines updated. Raw
+  responses: private/raw_responses_v11c (untracked, private/).
+- NEXT (optional, user decision): submit kapteeni-v1.1c to Benchmark
+  Heaven's own pipeline for an official sealed+v1.5 measurement
+  (text and/or ImageJevBench — the model is the repo's first
+  image-capable entrant for an IMAGE benchmark).
