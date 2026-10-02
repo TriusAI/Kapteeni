@@ -234,6 +234,17 @@ every option/level pass — the same multi-pass structure it was trained
 and gated on; E1 independence is exact because each question is
 forwarded on its own).
 
+**Image limits** (measured, `scripts` probe 2026-10-02): the wire accepts
+**8 MiB decoded bytes** of base64 PNG/JPEG (larger → 422); the Qwen3.5
+processor downscales anything above **~16.78 MP** to its pixel budget, so
+the model can see up to ~16.7 MP / ~16,300 vision tokens per image
+(vision tokens ≈ pixels/1024; each token covers a 32×32 px merged
+patch). Decision quality is **validated at 640×640** (the training
+renders, 400 tokens) — larger resolutions are accepted but
+out-of-distribution, and per-question latency scales linearly with
+pixels (a 6-option choice question on a 12 MP photo is ~70k vision
+tokens of forward). Send ~640×640 for interactive use.
+
 ## Layout
 
 - `kapteeni/contract.py` — the wire format as executable code (validation, answer
