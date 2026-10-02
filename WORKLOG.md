@@ -876,3 +876,30 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   box — absent from v1), runner guidance (no key needed, single-
   worker lock, 120s typesafe timeout ample, /v1/models), and the demo
   origin as a sanity aid.
+
+## 2026-10-03 — release defect caught by the user reviewing the diff:
+## the UPLOADED snapshot's kapteeni/ package carried the OLD (broken)
+## _inner_of
+
+- Timeline: the packer's copytree ran BEFORE the _inner_of fix existed
+  (the fix came out of the --dist crash debug right after the pack
+  built); the pack validation drove the dist's MODEL FILES through the
+  REPO's serving code (PYTHONPATH=.), so model/heads/config contents
+  were validated but the SHIPPED package code was never exercised from
+  the snapshot. The uploaded 17affb86 pin carries a package whose
+  serve_v11c --dist ./ would crash the same way the local one did.
+- Fixed: the package re-copied from HEAD into
+  ../kapteeni-v1.1c-dist/kapteeni (diff -r verified identical to the
+  repo tree; the shipped helper import-checked live). HEAD commit
+  8f414b8.
+- Resolution protocol (same as any pinned-artifact defect): the user
+  re-uploads README.md (the rewritten card) + the kapteeni/ dir
+  (content-hash dedupe makes it a small upload; model.safetensors
+  unchanged -> no re-upload of it); the revision hash moves -> sweep
+  every doc pin (README x2, PUBLISH-HF, JEVBENCH if present) + the
+  bench request #178's pinned revision row to the new sha.
+- PROTOCOL LESSON (recorded where pack.py lives too): pack.py's
+  copytree has the same trap — the shipped package should be exercised
+  FROM THE DIST after every pack build (serve --dist with
+  cwd=dist/kapteeni, not PYTHONPATH=repo) before upload. #TODO on the
+  next packer revision: a post-pack smoke runner.
