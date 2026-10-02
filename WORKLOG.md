@@ -670,3 +670,47 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   usage.input_tokens counts real image tokens (the flat 399 training
   constant was only correct for 640x640). 3 new tests (167 green);
   notice path verified live through the mock server.
+
+## 2026-10-02 (afternoon) — real photographs join the demo; serving
+## image policy settled by measurement
+
+- The user's three real photos (repo root: sign_test_1/2.jpg,
+  sign_test_3.png — an English warning sign on a green palisade
+  fence, a Chinese church-hours notice, a delivery-app screenshot
+  with Chinese/Uyghur item names) added as 3 demo cases (2 questions
+  each, hand-read gold, gold_label "hand" -> the page renders
+  "hand-checked (real photo, OOD)" instead of the construction
+  claim). Framed on-page as honest OOD probes: the model trained
+  ONLY on synthetic renders. Committed downscaled copies
+  (640-longest-edge JPEG in demo/images/; original files untouched at
+  the repo root); make_demo.py refreshes the downscale only when the
+  originals are present, so regeneration stays clone-safe. 12 cases
+  total now.
+- The real photos surfaced a serving-performance hazard, measured:
+  novel padded widths hit ~35-97s first-touch GDN shape searches on
+  this box (640x360 97s / 482x640 34s / 296x640 93s). Two candidate
+  fixes were A/B'd against the REAL cases:
+  (a) white-letterbox standardization to 640x640: fast, but
+      ImageOps.pad FILLS-then-CROPS portrait photos, and that
+      measurably flipped the church-hours case's two answers from
+      correct (conf 1.00 / P=0.61 on raw pixels) to wrong;
+  (b) even paste-based letterboxing (no crop, same text scale)
+      flipped the same two answers — the decision heads are
+      CONTEXT-sensitive to letterbox bars the training documents
+      never had.
+  SETTLED POLICY (kapteeni.model_v11c.bound_image): serve images at
+  natural size, downscale to a 640px LONGEST EDGE only when larger;
+  no crop, no paste, no upscale. Raw pixels are the regime where all
+  three real photos read correctly.
+- Residual per-shape latency is paid once at SERVER STARTUP:
+  serve_v11c --warmup (default on) pre-runs one minimal forward per
+  demo image size; (640x640 + the 8 demo images) warmup cost ~9s.
+  The demo's own cases are always warm; arbitrary new aspects pay
+  the tax once (README limits paragraph updated accordingly).
+- Final verified state (trained model, all 12 cases): 15/17 vs gold
+  — all three REAL cases 6/6 (horses-sign 2/2 incl. the fence scene
+  judgment, church-zh 2/2 after the policy fix, app-zh 2/2 incl.
+  Uyghur-script item prices); the two standing generated-case misses
+  are unchanged knowns (weather level-boundary expectation 3.006;
+  one calibrated zh hedge at P=0.72). Real-case latency 2.2-3.5s
+  (was 34-97s pre-warmup). Tests at 169 green.

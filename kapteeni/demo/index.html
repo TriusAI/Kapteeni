@@ -175,7 +175,7 @@ async function select(c) {
   $("caseview").innerHTML =
     (c.image ? `<img src="/demo/${esc(c.image)}" alt="state image">` : "") +
     `<div class="blurb">${esc(c.blurb)}</div>` +
-    `<div class="gold"><b>gold (by construction)</b> — ` +
+    `<div class="gold"><b>${esc(goldName(c))}</b> — ` +
     Object.entries(c.gold).map(([q, g]) => `${esc(q)}: ${esc(g)}`).join(" · ") +
     `</div>`;
   $("answers").innerHTML = "";
@@ -233,6 +233,11 @@ async function send() {
   }
 }
 
+function goldName(c) {
+  return c.gold_label === "hand" ? "hand-checked (real photo, OOD)"
+                                 : "gold (by construction)";
+}
+
 function render(answers) {
   const out = $("answers");
   out.innerHTML = "";
@@ -246,7 +251,7 @@ function render(answers) {
       const hit = gold != null &&
         ((gold === "yes" && a.noul >= 0.5) || (gold === "no" && a.noul < 0.5));
       verdict = `P(true) = <b class="${hit ? "hit" : "miss"}">${pct}%</b>` +
-        (gold != null ? ` <span style="color:var(--gold)">· gold ${esc(gold)}</span>` : "");
+        (gold != null ? ` <span style="color:var(--gold)">· ${esc(goldName(current))} ${esc(gold)}</span>` : "");
       div.innerHTML = `<div><span class="qid">${esc(qid)}</span><span class="type">noul</span></div>
         <div class="verdict">${verdict}</div>
         <div class="noulbar"><i style="width:${a.noul * 100}%"></i><u></u></div>`;
@@ -262,7 +267,7 @@ function render(answers) {
       const hit = gold != null && a.choice === gold;
       verdict = `→ <b class="${hit ? "hit" : "miss"}">${esc(a.choice)}</b>` +
         ` <span class="meta">confidence ${(a.confidence * 100).toFixed(0)}%</span>` +
-        (gold != null ? ` <span style="color:var(--gold)">· gold ${esc(gold)}</span>` : "");
+        (gold != null ? ` <span style="color:var(--gold)">· ${esc(goldName(current))} ${esc(gold)}</span>` : "");
       div.innerHTML = `<div><span class="qid">${esc(qid)}</span><span class="type">choice</span></div>
         <div class="verdict">${verdict}</div>${rows}`;
     } else {  // score
@@ -276,7 +281,7 @@ function render(answers) {
       const hit = gold != null && a.legend[String(Math.round(a.score))] === gold;
       verdict = `score = <b class="${hit ? "hit" : "miss"}">${a.score}</b>` +
         ` <span class="meta">confidence ${(a.confidence * 100).toFixed(0)}%</span>` +
-        (gold != null ? ` <span style="color:var(--gold)">· gold ${esc(gold)}</span>` : "");
+        (gold != null ? ` <span style="color:var(--gold)">· ${esc(goldName(current))} ${esc(gold)}</span>` : "");
       div.innerHTML = `<div><span class="qid">${esc(qid)}</span><span class="type">score</span></div>
         <div class="verdict">${verdict}</div>${rows}
         <div class="legend">score = Σ(level × p) — 0-based expectation; levels judged independently</div>`;

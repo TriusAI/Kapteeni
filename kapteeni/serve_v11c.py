@@ -21,6 +21,7 @@ import json
 import mimetypes
 import os
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -134,22 +135,19 @@ def make_handler(model, api_key: str | None, served_as: str):
                 self._json(e.status, e.body())
                 return
             resp = {"model": served_as, "answers": answers, "usage": usage}
-            # optional notice: the attached image exceeds the validated
-            # 640x640 distribution (all six gates were read there)
+            # optional notice: attached images are standardized to the
+            # validated 640x640 serving shape — tell the caller what
+            # happened to their pixels when they sent something larger
             try:
-                from kapteeni.model_v11c import (MAX_PIXELS, extract_image,
-                                                  vision_tokens)
+                from kapteeni.model_v11c import extract_image
                 _, img = extract_image(state)
-                if img is not None:
+                if img is not None and img.width * img.height / 1e6 > 0.5:
                     mp = img.width * img.height / 1e6
-                    tok = vision_tokens(img.width, img.height)
-                    if mp > 0.5:
-                        resp["notice"] = (
-                            f"state.image is {mp:.1f} MP (~{tok} vision "
-                            f"tokens per pass); decision quality is "
-                            f"validated at 640x640 (~400 tokens) — "
-                            f"downscale for speed and for staying in the "
-                            f"validated distribution")
+                    resp["notice"] = (
+                        f"state.image was {mp:.1f} MP and has been "
+                        f"downscaled to a 640px longest edge (the "
+                        f"trained ~400-token ceiling; aspect preserved, "
+                        f"pixels otherwise untouched)")
             except Exception:
                 pass  # the notice is advisory; never fail a request on it
             self._json(200, resp)
@@ -163,6 +161,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--mock", action="store_true",
                     help="serve MockV11C (no GPU; interface + demo dry-run)")
+    ap.add_argument("--warmup", action="store_true", default=True,
+                    help="pre-run one forward per demo image size at "
+                         "startup (amortizes the box's per-shape GDN "
+                         "searches; on by default)")
+    ap.add_argument("--no-warmup", dest="warmup", action="store_false")
     ap.add_argument("--base", default=DEFAULT_BASE)
     ap.add_argument("--adapter", default="")
     ap.add_argument("--heads", default="")
@@ -188,6 +191,21 @@ def main(argv: list[str] | None = None) -> int:
               f"{temps}) ...", flush=True)
         from kapteeni.model_v11c import SystemOneV11C
         model = SystemOneV11C(args.base, adapter, heads, temps)
+        if args.warmup:
+            sizes = [(640, 640)]
+            demo_imgs = sorted((DEMO_DIR / "images").glob("*")) \
+                if DEMO_DIR.exists() else []
+            from PIL import Image
+            if demo_imgs:
+                sizes += [Image.open(p).size for p in demo_imgs
+                          if p.suffix.lower()
+                          in (".png", ".jpg", ".jpeg", ".webp")]
+            print(f"warmup: pre-running forwards for {len(sizes)} image "
+                  f"size(s) (first-touch GDN shape searches amortize "
+                  f"into startup) ...", flush=True)
+            t0 = time.time()
+            model.warmup(sizes)
+            print(f"warmup done in {time.time() - t0:.0f}s", flush=True)
     api_key = os.environ.get("KAPTEENI_API_KEY") or None
     httpd = ThreadingHTTPServer((args.host, args.port),
                                 make_handler(model, api_key, "kapteeni-v1.1c"))

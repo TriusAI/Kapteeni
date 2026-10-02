@@ -34,7 +34,7 @@ MODEL = "kapteeni-v1.1c"
 
 # --------------------------------------------------------------- image cases
 
-def img_case(cid, title, blurb, group, specs, seed_note):
+def img_case(cid, title, blurb, group, specs, seed_note, gold_label="construction"):
     """group: a gen_* output dict {img, rid, rows}; specs: [(row, qid)]."""
     (DEMO / "images").mkdir(parents=True, exist_ok=True)
     group["img"].save(DEMO / "images" / f"{cid}.png")
@@ -60,6 +60,7 @@ def img_case(cid, title, blurb, group, specs, seed_note):
         "id": cid, "title": title, "blurb": blurb,
         "family": group["rows"][0]["meta"]["family"],
         "image": f"images/{cid}.png", "gold": gold,
+        "gold_label": "construction",
         "request": {
             "state": {"image": f"@file:images/{cid}.png",
                       "note": group["rows"][0]["state_text"]},
@@ -193,13 +194,127 @@ def build_text_cases():
     return cases
 
 
+# -------------------------------------------------- real photographs
+# (the user's own photos; hand-labeled — NO gold-by-construction claim.
+# The model trained solely on synthetic renders, so these are honest
+# out-of-distribution probes shown as such on the page. The downscaled
+# copies in demo/images/ are committed; regeneration only refreshes the
+# downscale when the originals are present in the repo root.)
+
+REAL_PHOTOS = (  # (repo-root original, demo copy, longest edge)
+    ("sign_test_1.jpg", "images/sign-1.jpg"),
+    ("sign_test_2.jpg", "images/sign-2.jpg"),
+    ("sign_test_3.png", "images/sign-3.jpg"),
+)
+
+
+def refresh_real_images():
+    from PIL import Image
+    (DEMO / "images").mkdir(parents=True, exist_ok=True)
+    for src_name, dst_rel in REAL_PHOTOS:
+        dst = DEMO / dst_rel
+        if dst.exists():
+            continue  # committed copy present; regeneration-safe
+        src = ROOT / src_name
+        img = Image.open(src)
+        img = img.convert("RGB")
+        w, h = img.size
+        s = 640 / max(w, h)
+        if s < 1:
+            img = img.resize((round(w * s), round(h * s)), Image.LANCZOS)
+        img.save(dst, "JPEG", quality=88)
+
+
+def real_case(cid, title, blurb, image_rel, note, questions, gold,
+              provenance):
+    return {
+        "id": cid, "title": title, "blurb": blurb, "family": "real_photo",
+        "image": image_rel, "gold": gold, "gold_label": "hand",
+        "request": {
+            "state": {"image": f"@file:{image_rel}", "note": note},
+            "model": MODEL, "questions": questions,
+        },
+        "provenance": provenance,
+    }
+
+
+def build_real_cases():
+    cases = []
+    # 1 — the horses sign (English, on a green palisade fence)
+    cases.append(real_case(
+        "horses-sign", "Warning sign, real photograph (OOD probe)",
+        "A real photograph — the model trained ONLY on synthetic renders, "
+        "so this is out-of-distribution by construction: watch how "
+        "confident the calibration stays (or doesn't) on pixels it has "
+        "never seen the like of. Gold below is hand-read from the photo.",
+        "images/sign-1.jpg", "A red-lettered warning sign mounted on a "
+        "green metal palisade fence.",
+        {"happens": {"type": "choice",
+                     "instructions": "What does the sign say will happen "
+                                     "to horses found on these lands?",
+                     "criteria": {
+                         "found horses are impounded": None,
+                         "found horses are sold at auction": None,
+                         "horse riding is welcome on these lands": None,
+                         "found horses are put up for adoption": None}},
+         "fence": {"type": "noul",
+                   "instructions": "Is the sign mounted on a green metal "
+                                   "fence?",
+                   "criteria": {"true": "the sign is mounted on a green "
+                                        "metal fence",
+                                "false": "the sign is mounted on "
+                                         "something else"}}},
+        {"happens": "found horses are impounded", "fence": "yes"},
+        "real photograph, hand-checked (never in any training split)"))
+    # 2 — the church hours sign (Chinese)
+    cases.append(real_case(
+        "church-zh", "教堂告示，真实照片（中文 OOD 探测）",
+        "一张真实的照片：训练只用过合成渲染，因此这类真实照片在 "
+        "构造上就是分布外样本——观察模型在从未见过的真实像素上的"
+        "校准表现。Gold 为人工从照片读出（hand-checked）。",
+        "images/sign-2.jpg", "一张教堂门口的弥撒与参观时间告示。",
+        {"closed_day": {"type": "choice",
+                        "instructions": "按照告示，教堂哪一天休息、"
+                                        "不对外开放？",
+                        "criteria": {"星期一": None, "星期日": None,
+                                     "星期六": None, "星期二": None}},
+         "sun_mass": {"type": "noul",
+                      "instructions": "按照告示，主日弥撒时间包含"
+                                      "下午15:00，对吗？",
+                      "criteria": {"true": "主日弥撒包含下午15:00",
+                                   "false": "主日弥撒不包含下午15:00"}}},
+        {"closed_day": "星期一", "sun_mass": "yes"},
+        "真实照片，人工核对（从未进入任何训练划分）"))
+    # 3 — the delivery-app screenshot (zh + Uyghur script)
+    cases.append(real_case(
+        "app-zh", "外卖截图，真实照片（最分布外的一种输入）",
+        "手机点餐页面的截图——不是文档、不是街景。物品名混排中文与"
+        "维吾尔文。与上两例一样是分布外探测；gold 为人工从截图读出。",
+        "images/sign-3.jpg", "一份手机外卖点餐页面（烤肉类）的截图。",
+        {"price_1133": {"type": "choice",
+                        "instructions": "截图中哪个商品的价格是 ¥11.33？",
+                        "criteria": {"鸭肠": None, "烤鸡中翅": None,
+                                     "烤香芋": None, "牛板筋": None}},
+         "price_compare": {"type": "noul",
+                           "instructions": "截图中「烤香芋」的价格比"
+                                           "「烤鸡中翅」低，对吗？",
+                           "criteria": {"true": "烤香芋价格更低",
+                                        "false": "烤香芋价格不低于"
+                                                 "烤鸡中翅"}}},
+        {"price_1133": "鸭肠", "price_compare": "yes"},
+        "真实照片（截图），人工核对（从未进入任何训练划分）"))
+    return cases
+
+
 def main() -> int:
-    cases = build_image_cases() + build_text_cases()
+    refresh_real_images()
+    cases = build_image_cases() + build_real_cases() + build_text_cases()
     (DEMO / "images").mkdir(parents=True, exist_ok=True)
     (DEMO / "cases.json").write_text(json.dumps(
         {"model": MODEL, "cases": cases}, ensure_ascii=False, indent=1))
     print(f"{len(cases)} cases ({sum(1 for c in cases if c['image'])} with "
-          f"images) -> {DEMO}/cases.json")
+          f"images; {sum(1 for c in cases if c.get('gold_label') == 'hand')} "
+          f"real-photo hand-labeled) -> {DEMO}/cases.json")
     return 0
 
 

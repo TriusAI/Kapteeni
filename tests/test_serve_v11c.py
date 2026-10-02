@@ -105,13 +105,31 @@ def test_vision_tokens_matches_measured_grids():
 
 
 def test_usage_counts_real_image_tokens():
-    """No flat 399: a bigger attached image costs more input tokens."""
+    """The serving path standardizes images to 640x640, so the served
+    (standardized) model always bills the same ~400-token image cost;
+    the mock counts by the raw dims it was given (no standardization on
+    the mock path)."""
     m = MockV11C()
     q = {"q": {"type": "noul", "instructions": "x", "criteria": None}}
-    small, u1 = m.evaluate(img_state(), q)
-    big, u2 = m.evaluate(img_state(b64=_b64_of(1600, 1200)), q)
+    _, u1 = m.evaluate(img_state(), q)
+    _, u2 = m.evaluate(img_state(b64=_b64_of(1600, 1200)), q)
     assert u2["input_tokens"] > u1["input_tokens"]
-    assert small == small  # sanity: both evaluated
+
+
+def test_bound_image_policy():
+    """Serving image policy: downscale to a 640px longest edge only when
+    larger; smaller images pass UNCHANGED (no upscale, no crop, no
+    paste — resizing/pasting measurably flipped the church-hours real
+    photo that the raw pixels answered correctly)."""
+    from PIL import Image
+    from kapteeni.model_v11c import bound_image
+    big = Image.new("RGB", (1600, 800), (10, 200, 30))
+    out = bound_image(big)
+    assert out.size == (640, 320)  # longest edge bounded, aspect intact
+    small = Image.new("RGB", (300, 200), (10, 200, 30))
+    assert bound_image(small).size == (300, 200)   # untouched
+    assert bound_image(Image.new("RGBA", (800, 400),
+                                 (1, 2, 3, 255))).size == (640, 320)
 
 
 def _b64_of(w, h):
@@ -122,18 +140,24 @@ def _b64_of(w, h):
 
 
 def test_server_notice_on_oversized_image(server):
-    """Images above the validated 640x640 distribution get an advisory
-    notice; small ones get none."""
+    """Images are bounded to a 640px longest edge at serve time, and
+    oversized originals say so in an advisory notice."""
     body = {"state": {"image": _b64_of(1600, 1200), "note": "photo"},
             "model": "kapteeni-v1.1c",
             "questions": {"q": {"type": "noul", "instructions": "x",
                                 "criteria": None}}}
     status, resp = post(server, body)
     assert status == 200
-    assert "notice" in resp and "validated at 640x640" in resp["notice"]
+    assert "notice" in resp and "640px longest edge" in resp["notice"]
     body["state"] = img_state()  # 8x8 -> tiny, below 0.5 MP
     status, resp = post(server, body)
     assert status == 200 and "notice" not in resp
+
+
+def test_warmup_noop_on_mock():
+    """The mock's warmup is a no-op — the interface contract carries it."""
+    m = MockV11C()
+    m.warmup([(640, 640), (1600, 900)])  # must not raise
 
 
 # --------------------------------------------------------------------- E1

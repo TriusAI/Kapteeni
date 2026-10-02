@@ -12,6 +12,7 @@
     "cheapest": "Latte",
     "price_gate": "yes"
    },
+   "gold_label": "construction",
    "request": {
     "state": {
      "image": "@file:images/menu-en.png",
@@ -64,6 +65,7 @@
    "gold": {
     "invoice_check": "no"
    },
+   "gold_label": "construction",
    "request": {
     "state": {
      "image": "@file:images/invoice-en.png",
@@ -92,6 +94,7 @@
    "gold": {
     "seat": "R2"
    },
+   "gold_label": "construction",
    "request": {
     "state": {
      "image": "@file:images/seating-en.png",
@@ -122,6 +125,7 @@
    "gold": {
     "days": "Four"
    },
+   "gold_label": "construction",
    "request": {
     "state": {
      "image": "@file:images/weather-en.png",
@@ -154,6 +158,7 @@
    "gold": {
     "最贵": "印度拉茶"
    },
+   "gold_label": "construction",
    "request": {
     "state": {
      "image": "@file:images/menu-zh.png",
@@ -175,6 +180,126 @@
     }
    },
    "provenance": "synth3zh menu_board, seed 1105"
+  },
+  {
+   "id": "horses-sign",
+   "title": "Warning sign, real photograph (OOD probe)",
+   "blurb": "A real photograph — the model trained ONLY on synthetic renders, so this is out-of-distribution by construction: watch how confident the calibration stays (or doesn't) on pixels it has never seen the like of. Gold below is hand-read from the photo.",
+   "family": "real_photo",
+   "image": "images/sign-1.jpg",
+   "gold": {
+    "happens": "found horses are impounded",
+    "fence": "yes"
+   },
+   "gold_label": "hand",
+   "request": {
+    "state": {
+     "image": "@file:images/sign-1.jpg",
+     "note": "A red-lettered warning sign mounted on a green metal palisade fence."
+    },
+    "model": "kapteeni-v1.1c",
+    "questions": {
+     "happens": {
+      "type": "choice",
+      "instructions": "What does the sign say will happen to horses found on these lands?",
+      "criteria": {
+       "found horses are impounded": null,
+       "found horses are sold at auction": null,
+       "horse riding is welcome on these lands": null,
+       "found horses are put up for adoption": null
+      }
+     },
+     "fence": {
+      "type": "noul",
+      "instructions": "Is the sign mounted on a green metal fence?",
+      "criteria": {
+       "true": "the sign is mounted on a green metal fence",
+       "false": "the sign is mounted on something else"
+      }
+     }
+    }
+   },
+   "provenance": "real photograph, hand-checked (never in any training split)"
+  },
+  {
+   "id": "church-zh",
+   "title": "教堂告示，真实照片（中文 OOD 探测）",
+   "blurb": "一张真实的照片：训练只用过合成渲染，因此这类真实照片在 构造上就是分布外样本——观察模型在从未见过的真实像素上的校准表现。Gold 为人工从照片读出（hand-checked）。",
+   "family": "real_photo",
+   "image": "images/sign-2.jpg",
+   "gold": {
+    "closed_day": "星期一",
+    "sun_mass": "yes"
+   },
+   "gold_label": "hand",
+   "request": {
+    "state": {
+     "image": "@file:images/sign-2.jpg",
+     "note": "一张教堂门口的弥撒与参观时间告示。"
+    },
+    "model": "kapteeni-v1.1c",
+    "questions": {
+     "closed_day": {
+      "type": "choice",
+      "instructions": "按照告示，教堂哪一天休息、不对外开放？",
+      "criteria": {
+       "星期一": null,
+       "星期日": null,
+       "星期六": null,
+       "星期二": null
+      }
+     },
+     "sun_mass": {
+      "type": "noul",
+      "instructions": "按照告示，主日弥撒时间包含下午15:00，对吗？",
+      "criteria": {
+       "true": "主日弥撒包含下午15:00",
+       "false": "主日弥撒不包含下午15:00"
+      }
+     }
+    }
+   },
+   "provenance": "真实照片，人工核对（从未进入任何训练划分）"
+  },
+  {
+   "id": "app-zh",
+   "title": "外卖截图，真实照片（最分布外的一种输入）",
+   "blurb": "手机点餐页面的截图——不是文档、不是街景。物品名混排中文与维吾尔文。与上两例一样是分布外探测；gold 为人工从截图读出。",
+   "family": "real_photo",
+   "image": "images/sign-3.jpg",
+   "gold": {
+    "price_1133": "鸭肠",
+    "price_compare": "yes"
+   },
+   "gold_label": "hand",
+   "request": {
+    "state": {
+     "image": "@file:images/sign-3.jpg",
+     "note": "一份手机外卖点餐页面（烤肉类）的截图。"
+    },
+    "model": "kapteeni-v1.1c",
+    "questions": {
+     "price_1133": {
+      "type": "choice",
+      "instructions": "截图中哪个商品的价格是 ¥11.33？",
+      "criteria": {
+       "鸭肠": null,
+       "烤鸡中翅": null,
+       "烤香芋": null,
+       "牛板筋": null
+      }
+     },
+     "price_compare": {
+      "type": "noul",
+      "instructions": "截图中「烤香芋」的价格比「烤鸡中翅」低，对吗？",
+      "criteria": {
+       "true": "烤香芋价格更低",
+       "false": "烤香芋价格不低于烤鸡中翅"
+      }
+     }
+    }
+   },
+   "provenance": "真实照片（截图），人工核对（从未进入任何训练划分）"
   },
   {
    "id": "temporal-en",

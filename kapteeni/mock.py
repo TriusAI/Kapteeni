@@ -72,6 +72,9 @@ class MockV11C:
     def __init__(self, seed: str = "kapteeni-v11c-mock"):
         self.seed = seed
 
+    def warmup(self, sizes):  # torch-free stand-in: nothing to warm
+        pass
+
     def evaluate(self, state, questions: dict):
         from kapteeni.model_v11c import extract_image
 

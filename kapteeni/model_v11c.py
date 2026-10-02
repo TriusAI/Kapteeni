@@ -105,6 +105,31 @@ def extract_image(state: Any):
     return pass_state, img
 
 
+def bound_image(img, edge: int = 640):
+    """Serving image policy: downscale to a 640px LONGEST edge only when
+    larger (aspect intact, LANCZOS); smaller images pass unchanged; no
+    crop, no paste, no upscale. Rationale (measured 2026-10-02 on the
+    real-photo OOD cases): the decision heads are CONTEXT-sensitive --
+    resizing/pasting altered the church-hours case's two answers that
+    were correct on the raw pixels (conf 1.00 / P=0.61 -> both wrong
+    under both white-paste and fill-crop variants), while raw-size
+    variants read all three real photos correctly. Bounding the longest
+    edge keeps the trained ~400-token ceiling (the wire cap is bytes,
+    not pixels; larger images arrive over the wire and are bounded
+    here). Residual cost: this box's GDN kernels grind a first-touch
+    shape search per distinct padded width -- the server takes a
+    --warmup pass over the demo image set at startup so the demo's own
+    cases are always warm; arbitrary new aspects pay ~30-90s once."""
+    from PIL import Image
+    w, h = img.size
+    s = edge / max(w, h)
+    if s < 1:
+        img = img.resize((max(1, round(w * s)), max(1, round(h * s))),
+                         Image.Resampling.LANCZOS)
+    return img
+
+
+
 def question_passes(q: dict, pass_state: Any):
     """One question -> its pass records (text + shared image). The
     multi-pass layout is byte-identical to training (serialize.py)."""
@@ -176,13 +201,32 @@ class SystemOneV11C:
             hidden = self.inner(**inputs, use_cache=False).last_hidden_state
             return self._last_h(hidden, inputs).float()
 
+    def warmup(self, sizes: list[tuple[int, int]]):
+        """Pre-run one minimal forward per image size so this box's
+        first-touch GDN shape searches amortize into startup (the
+        server calls this with the demo image set's dimensions; a
+        no-op on non-torch stand-ins)."""
+        if not self._loaded:
+            self._load()
+        from PIL import Image
+        gray = Image.new("RGB", (64, 64), (200, 200, 200))
+        for (w, h) in dict.fromkeys(sizes):  # dedupe, order kept
+            img = gray.resize((max(2, w), max(2, h)))
+            rec = {"text": noul_pass(
+                {"image": "<attached>", "note": "warmup"}, "warmup?",
+                {"true": "yes", "false": "no"}), "image": img}
+            self._h([rec])
+
     def evaluate(self, state, questions: dict):
         if not self._loaded:
             self._load()
         pass_state, img = extract_image(state)
         st = state_text(pass_state)
-        img_tok = (vision_tokens(img.width, img.height)
-                   if img is not None else 0)
+        if img is not None:
+            img = bound_image(img)
+            img_tok = vision_tokens(img.width, img.height)
+        else:
+            img_tok = 0
         answers: dict = {}
         in_tok = 0
         for qid, q in questions.items():
