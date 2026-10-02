@@ -140,16 +140,27 @@ def _b64_of(w, h):
 
 
 def test_server_notice_on_oversized_image(server):
-    """Images are bounded to a 640px longest edge at serve time, and
-    oversized originals say so in an advisory notice."""
-    body = {"state": {"image": _b64_of(1600, 1200), "note": "photo"},
+    """Any image the bounding actually changes (>640px longest edge)
+    gets a shrinkage/accuracy notice; images at or under the bound
+    (even photos above 0.5 MP generally) get none."""
+    for w, h, want in ((1600, 1200, True), (800, 800, True),
+                       (640, 640, False), (8, 8, False)):
+        body = {"state": {"image": _b64_of(w, h), "note": "photo"},
+                "model": "kapteeni-v1.1c",
+                "questions": {"q": {"type": "noul", "instructions": "x",
+                                    "criteria": None}}}
+        status, resp = post(server, body)
+        assert status == 200
+        if want:
+            assert "notice" in resp and "downscaled to a 640px" \
+                in resp["notice"]
+            assert "accuracy may differ" in resp["notice"]
+        else:
+            assert "notice" not in resp
+    body = {"state": img_state(),
             "model": "kapteeni-v1.1c",
             "questions": {"q": {"type": "noul", "instructions": "x",
                                 "criteria": None}}}
-    status, resp = post(server, body)
-    assert status == 200
-    assert "notice" in resp and "640px longest edge" in resp["notice"]
-    body["state"] = img_state()  # 8x8 -> tiny, below 0.5 MP
     status, resp = post(server, body)
     assert status == 200 and "notice" not in resp
 

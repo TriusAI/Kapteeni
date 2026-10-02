@@ -733,3 +733,18 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   tabular type in a screenshot is exactly the OOD frontier the page
   frames. New cases served at 2.3-3.8s (the 12-size warmup covered
   them: 11s at startup).
+
+## 2026-10-02 (evening) — shrinkage notice (user request)
+
+- The image-shrinkage caveat is now stated where it matters: a static
+  note next to the demo's attach control ("small text, dense tables
+  and fine detail can become unreadable at the bounded 640px size;
+  accuracy may differ from what the full-resolution image would give
+  — model + gates validated at 640px; pre-resize or crop for
+  precision-critical images"), a shortened version in the client
+  post-attach status, and the server-side advisory `notice` now fires
+  whenever the bounding actually changed the image (> 640px longest
+  edge; boundary-tested live: 640x640 none / 800x640 yes /
+  3000x3000 yes) with the same plain-terms wording. README limits
+  paragraph updated to match. Notice test extended to the boundary
+  matrix; 169 tests green.

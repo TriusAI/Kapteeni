@@ -243,10 +243,14 @@ patch). Decision quality is **validated at 640×640** (the training
 renders, 400 tokens) — larger resolutions are accepted but
 out-of-distribution, and per-question latency scales linearly with
 pixels (a 6-option choice question on a 12 MP photo is ~70k vision
-tokens of forward). The demo page's *attach your own image* picker
-auto-downscales to 640px before the wire, and requests carrying larger
-images get an advisory `notice` in the response with the computed
-per-pass token cost; `usage.input_tokens` counts the real image tokens
+tokens of forward). **Every image the bounding actually shrinks
+(> 640px longest edge) triggers a `notice` on the response** saying so
+in plain terms: small text and fine detail can become unreadable at
+the bounded size and accuracy may differ from what the
+full-resolution image would give — precision-critical callers should
+pre-resize (or crop to the region of interest) before sending. The
+demo page carries the same notice next to its attach control.
+`usage.input_tokens` counts the real image tokens
 (`kapteeni.model_v11c.vision_tokens`, anchored to the measured grids).
 
 ## Layout

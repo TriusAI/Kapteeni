@@ -141,13 +141,17 @@ def make_handler(model, api_key: str | None, served_as: str):
             try:
                 from kapteeni.model_v11c import extract_image
                 _, img = extract_image(state)
-                if img is not None and img.width * img.height / 1e6 > 0.5:
-                    mp = img.width * img.height / 1e6
+                if img is not None and (img.width > 640 or img.height > 640):
                     resp["notice"] = (
-                        f"state.image was {mp:.1f} MP and has been "
-                        f"downscaled to a 640px longest edge (the "
-                        f"trained ~400-token ceiling; aspect preserved, "
-                        f"pixels otherwise untouched)")
+                        f"state.image ({img.width}x{img.height}) was "
+                        f"downscaled to a 640px longest edge before the "
+                        f"model saw it: small text, dense tables, and "
+                        f"fine detail can become unreadable at that "
+                        f"size, and accuracy may differ from what the "
+                        f"full-resolution image would give — the model "
+                        f"and all six of its gates were trained and "
+                        f"validated at 640px. Send images no larger than "
+                        f"640px on the long edge when precision matters.")
             except Exception:
                 pass  # the notice is advisory; never fail a request on it
             self._json(200, resp)

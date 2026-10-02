@@ -70,6 +70,9 @@ textarea:focus { outline: 2px solid var(--accent); }
 .attach { display: inline-block; margin-left: .8rem; font-size: .84rem;
   color: var(--accent); cursor: pointer; border-bottom: 1px dotted var(--accent); }
 .attach:hover { color: var(--ink); }
+.note { font-size: .8rem; color: var(--gray); border-left: 3px solid var(--accent);
+  padding: .4rem 0 .4rem .7rem; margin: .8rem 0; max-width: 34rem; line-height: 1.45; }
+.note b { color: var(--accent); font-weight: normal; font-variant: small-caps; }
 /* — answers — */
 .ans { border-bottom: 1px solid var(--rule-light); padding: .8rem 0; }
 .ans .qid { font-family: var(--mono); font-size: .8rem; color: var(--gray); }
@@ -122,6 +125,14 @@ generators; gold answers are exact by construction</span></h2>
     <label class="attach" for="own">…or attach your own image
       <input type="file" id="own" accept="image/png,image/jpeg" hidden>
     </label>
+    <div class="note"><b>image shrinkage note</b> — attached images are
+    downscaled to a 640px longest edge before the model sees them.
+    Small text, dense tables, and fine detail can become unreadable at
+    that size, and accuracy can differ from what the full-resolution
+    image would give: the model and all six of its gates were trained
+    and validated at 640px. For precision-critical images, pre-resize
+    to ≤ 640px on the long edge yourself (cropping to the region of
+    interest keeps the most detail), or expect the shrink.</div>
     <div class="status" id="status"></div>
     <div class="how">Wire format: <code>POST /v1/systemone</code>. The
     <code>state.image</code> field carries base64 PNG/JPEG; question types
@@ -332,8 +343,8 @@ $("own").onchange = async () => {
     req.state = Object.assign({}, req.state, {image: b64});
     $("req").value = JSON.stringify(req, null, 2);
     st.textContent = `attached your image, downscaled to ${w}x${h} ` +
-      `(the validated distribution) — state.image updated in the ` +
-      `request; adjust state/questions to match it`;
+      `(the validated size) — small text may have become unreadable; ` +
+      `state.image was updated in the request`;
     $("caseview").scrollIntoView({behavior: "smooth", block: "nearest"});
   } catch (e) {
     st.className = "status err";
