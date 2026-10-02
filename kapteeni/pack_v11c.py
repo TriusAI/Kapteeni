@@ -62,72 +62,132 @@ questions; get back **calibrated probability distributions** your code can
 branch on. No text generation. Kapteeni implements the TypeSafe System One
 decision-model interface (`POST /v1/systemone`, the wire format of Jev).
 
-## What it is
+**The flow:** `state` (+ optional `state.image`, one base64 PNG/JPEG) →
+every question — and, for choice, every option; for score, every level —
+serialized into its **own pass** over the same state (chat-template render;
+the image enters through the processor's vision path as ~400 tokens) →
+Qwen3.5-4B → each pass's **final-token hidden state** → tiny per-primitive
+readout heads (choice = softmax over the row's option passes scored in-loss
+during training; score = per-level independent BCE; noul = an absolute
+probability — P(A) + P(not-A) can exceed 1 by design, mirroring the
+reference) → per-primitive temperature (the only constants fitted anywhere
+in the line; held-out validation, never benchmark data) → contract shaping
+→ typed answers with exact-1 probability sums. Deterministic end to end;
+question ids never reach the model; a question is forwarded on its own, so
+adding or removing questions cannot change another question's answer.
 
-One Qwen3.5-4B backbone + LoRA adapter (merged in this snapshot) + tiny
-per-primitive readout heads, answering **noul** (absolute probability of
-true), **choice** (relative, probabilities sum to exactly 1) and **score**
-(independent levels; score = the 0-based expectation) questions over any
-state — text-only or carrying `state.image` (base64 PNG/JPEG), in English
-and Chinese. The answer space stays `yes/no` + option names in every
-language; Chinese enters through state, instructions, and criteria only.
+## Benchmark: JevBench public half (231 items, official harness, official scorer)
 
-Trained per the v1 phase pipeline ported to the multimodal base
-(multi-pass per-option judgment, distillation-weighted targets, group-CE
-in-loss, heads on the final hidden state; LoRA r=32/alpha=64 on the seven
-language-model projections, lr 1e-4, token budget 8192, ONE epoch —
-24.1M real tokens over a mixed image+Chinese+text curriculum), one run,
-every pre-registered gate passed on the first reading (2026-10-02):
+Run of record (2026-10-02), measured through THIS snapshot's packaged
+distribution (serve `--dist`/`--hf`) at jevbench upstream `bb05a33`;
+231/231 attempted, 0 failures, all schema-valid. Context rows: our shipped
+text-only variant kapteeni-v1-meticulous.
+
+| | kapteeni-v1.1c | (context: v1-meticulous) |
+|---|---:|---:|
+| composite (the benchmark's axes; our hardware assumptions) | **63.72** | 65.71 |
+| Intelligence | **68.33** | 60.3 |
+| public accuracy (231 items) | **0.766** (177/231) | 0.710 |
+| easy / standard / hard | 1.000 / 0.931 / 0.559 | 1.000 / 0.889 / 0.469 |
+| top-label ECE → Calibration | 0.0984 → 80.3 | 0.0496 → 90.1 |
+| latency p50 / p95 (raw) | 0.26 s / 10.6 s | 0.17 s / 1.17 s |
+| mean input tokens/decision | 562 | 597 |
+
+- **n=231 carries a 95% CI of ±5.9pt** — the composite difference vs
+  65.71 is inside single-run noise; don't read it as a win or a loss.
+- The hard-tier jump (+9.0pt), the accuracy gain, and Intelligence +8.0
+  are within-resolution separable, and the family breakdown shows where:
+  **multi_hop 0.278 → 0.667**, long_policy 0.316 → 0.421 (the rule skills
+  the port targeted), while temporal_numeric (n=15; 0.20 → 0.13) remains
+  beyond every model this lineage has trained.
+- Latency/cost are raw numbers on our only hardware (AMD Strix Halo
+  iGPU, ROCm, contended); plain PyTorch/transformers, no vendor-specific
+  code. The board's official Intelligence folds in sealed items (ours
+  renormalizes over the three public tiers, as the text variants'
+  numbers do); the full section incl. the frozen-v1.5-method note is
+  in the repo's docs/JEVBENCH.md.
+
+**When to use which of our models** (numbers first; this repo makes no
+leaderboard/placement claims): traffic with **images or Chinese** →
+v1.1c, the only variant that handles either; pure-text well-formed
+numeric/temporal/multi-step decisions → the measured rule skills favor
+v1.1c (and the text variant -intuit over -meticulous); messy,
+adversarial, unknown pure-text traffic whose confidence values are
+consumed downstream → -meticulous's calibration is the documented safest.
+
+## Pre-registered gates (all passed; one run, one reading)
 
 | gate | reading | bar |
 |---|---:|---:|
 | synth3-val (n=590, English image decisions) | 0.9661 | > 0.8068 (frozen base) |
 | synth3zh-val (n=204, Chinese image decisions; reported) | 0.9412 | — |
-| MNLI-noul (n=150, English text, never trained on) | 0.8800 | >= 0.84 |
-| OCNLI-noul (n=150, Chinese text, never trained on) | 0.8467 | >= 0.83 |
-| synth2zh-val (n=403, Chinese rule skills) | 0.9132 | >= 0.90 |
-| synth2-EN-val (n=609, English rule skills) | 0.9048 | >= 0.90 |
-| fitted ECE (noul / choice / score) | 0.0241 / 0.0175 / 0.0685 | <= 0.10 |
-
-The rule-skill mastery bars (0.90) had falsified every predecessor of
-this arc and were never met by any prior configuration; the multi-pass
-judgment structure is what closed them, with MNLI/OCNLI holding
-throughout the run.
+| MNLI-noul (n=150, English text, never trained on) | 0.8800 | ≥ 0.84 |
+| OCNLI-noul (n=150, Chinese text, never trained on) | 0.8467 | ≥ 0.83 |
+| synth2zh-val (n=403, Chinese rule skills) | 0.9132 | ≥ 0.90 |
+| synth2-EN-val (n=609, English rule skills) | 0.9048 | ≥ 0.90 |
+| fitted ECE (noul / choice / score) | 0.0241 / 0.0175 / 0.0685 | ≤ 0.10 |
 
 ## Quickstart
 
 ```bash
+# serve from this download (merged model — no peft, no training artifacts)
 HF_HUB_OFFLINE=1 python3 -m kapteeni.serve_v11c --dist ./ --port 8002
-curl localhost:8002/v1/systemone -d '{"state": {"note": "a cafe menu",
-  "image": "<base64 png>"}, "model": "kapteeni-v1.1c", "questions": {
-  "q1": {"type": "choice", "instructions": "Which drink is the most
-          expensive?", "criteria": {"Espresso": null, "Latte": null,
-          "Mocha": null}}}}'
-# demo website after starting the server: http://localhost:8002/
+# or directly from this repo id, no download step needed:
+python3 -m kapteeni.serve_v11c --hf TriusAI/kapteeni-v1.1c --port 8002
+# API: POST http://localhost:8002/v1/systemone — the existing typesafe
+# adapter and every Jev harness reach it unchanged.
+# Demo website (15 pre-configured cases with hand-checked gold
+# annotations, incl. real photographs): http://localhost:8002/
 ```
 
-Images are bounded to a 640px longest edge at serve time; quality is
-validated at 640x640 (400 vision tokens/pass). Question ids never reach
-the model; answers are content-only and deterministic.
+Example request:
+
+```json
+{"state": {"image": "<base64 png>", "note": "a cafe menu."},
+ "model": "kapteeni-v1.1c",
+ "questions": {"q1": {"type": "choice",
+                      "instructions": "Which drink is the most expensive?",
+                      "criteria": {"Espresso": null, "Latte": null,
+                                   "Mocha": null}},
+               "q2": {"type": "noul",
+                      "instructions": "Is any drink above $9.00?",
+                      "criteria": {"true": "above", "false": "not above"}}}}
+```
+
+**Image handling:** one image per request. Arriving images larger than a
+**640px longest edge are downscaled to it** (aspect preserved; no crop,
+no paste, no upscale) — small text and fine detail can become unreadable
+at the bound, and accuracy may differ from what the full-resolution
+image would give, because the model and all its gates were trained and
+validated at 640×640; the response carries an advisory `notice` naming
+this whenever the bound applies. Precision-critical callers should send
+images at ≤ 640px on the long edge, or crop to the region of interest.
+Question ids never reach the model; answers are content-only.
 
 ## Training data
 
-Synthetic, gold-by-construction, all pixels/text ours (Apache-2.0): 20
+Synthetic, gold by construction, all pixels/text ours (Apache-2.0): 20
 image document families (English + fully-Chinese renders), binned
 temporal/multi-hop/long-policy rule families (English + Chinese ports),
-and English text replay (BoolQ/FEVER/Banking77/CLInc150/GoEmotions/
-HelpSteer2-adjacent surfaces reused from the v1.2 union byte-identical).
-Zero 8-token overlaps with JevBench or OCNLI gate items (contamination
-audit, CJK-aware). Teacher soft labels for noul/replay: k-sample
-agreement from a cloud LLM judge (fidelity-documented). Never trained on:
-MNLI, OCNLI, synth val slices, imajev-bench, JevBench.
+and an English text replay unioned with the v1.2-era surfaces. Teacher
+soft labels for noul/replay: k-sample agreement from a cloud LLM judge
+(fidelity documented). **Contamination:** the 8-token CJK-aware shingle
+audit vs JevBench text public items + OCNLI shows zero hits
+(scripts/contamination_audit.py); ImageJevBench items were never part of
+an item-level audit (items and keys are not distributed), but the image
+training data is programmatic template families into which benchmark
+content cannot enter by construction. Val slices, MNLI and OCNLI were
+never trained on; no gates or constants were adjusted after any
+measurement.
 
-## Citation / provenance
+## Licenses / provenance
 
-Code + generators: github.com/TriusAI (kapteeni), Apache-2.0. Weights:
-CC BY-SA 4.0 (ShareAlike from MultiNLI + FEVER annotation lineage),
-see WEIGHTS-LICENSE.md. Backbone: Qwen/Qwen3.5-4B (Apache-2.0).
-'''
+Code + generators: **Apache-2.0** (matching the base model; the serving
+package ships inside this snapshot). Trained weights: **CC BY-SA 4.0** —
+the ShareAlike term comes from the MultiNLI + FEVER annotation lineage
+in the text replay; full provenance and attribution guidance in
+WEIGHTS-LICENSE.md. Backbone: Qwen/Qwen3.5-4B (Apache-2.0). Not
+affiliated with TypeSafe; "Jev" is their model and trademark.'''
 
 
 def main(argv: list[str] | None = None) -> int:

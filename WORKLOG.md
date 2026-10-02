@@ -842,3 +842,37 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
 - Note for the maintainers in the thread: the repo's main may advance
   past the pin (card-text and doc updates only; weights + serving
   constants frozen at the snapshot), consistent with #102's note.
+
+## 2026-10-02 (late night) — README/card/issue rewrites (user: "they lack
+## something I can't tell")
+
+- The identified gaps, fixed: the repo README's 1.1c section had NO
+  architecture flow (the text half has one — added the matching
+  multimodal diagram: state(+state.image) -> per-question/option/level
+  passes -> Qwen3.5-4B (image via the vision path, ~400 tokens) ->
+  heads -> temperature -> contract shaping); NO cross-variant
+  comparison (added "The three shipped variants, side by side" with
+  use-when guidance — image traffic / zh -> 1.1c; well-formed text
+  skills -> 1.1c (then -intuit over -meticulous); messy unknown text
+  -> -meticulous's calibration); the 1.1c bench numbers moved into
+  the flow; the Layout section was v0-ERA (listed none of the new
+  machinery — rewritten: text-line modules + the complete multimodal
+  line incl. pack_v11c and the demo).
+- The HF model card (pack_v11c.py CARD template + the local dist
+  copy): carried NO benchmark numbers at all (a numbers-only card
+  with the numbers missing) and no architecture description. Rebuilt:
+  the flow paragraph, the JevBench run-of-record table (composite
+  63.72 / Intelligence 68.33 / per-tier / per-family / ECE / tokens)
+  with the ±5.9pt caveat + v1.5 note, the three-way use-when
+  guidance, quickstart with --dist./--hf serving + an example
+  request, the image-shrinkage handling, training data +
+  contamination + licenses. NOTE: the HF-hosted card needs the user
+  to re-upload README.md (no HF token in this environment — the
+  corrected card is ../kapteeni-v1.1c-dist/README.md, same filename,
+  drop-in).
+- Issue #178 body edited (supplementary section): new-model-line
+  clarification (follow-up relation to #102, no variant replacement),
+  MEASURED image-question latencies (p50 2.6s / worst 6s on our iGPU
+  box — absent from v1), runner guidance (no key needed, single-
+  worker lock, 120s typesafe timeout ample, /v1/models), and the demo
+  origin as a sanity aid.

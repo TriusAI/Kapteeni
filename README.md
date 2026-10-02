@@ -174,6 +174,15 @@ every fix along the way); calibration report: `docs/EVAL.md`.
 
 ## The multimodal line: kapteeni-v1.1c (images + Chinese + text)
 
+```
+state (+ state.image) ──▶ every question / option / level ──▶ its own pass ──▶ Qwen3.5-4B
+                          (chat-template render; image enters the     (merged or LoRA'd)
+                           processor's vision path, ~400 tokens)
+                  ──▶ per-pass final-token h ──▶ per-primitive readout heads
+                  ──▶ fitted per-primitive temperature ──▶ contract shaping
+                  ──▶ {answers: typed + probabilities + confidence, usage, notice}
+```
+
 One model, one wire contract: states may carry an **`image` field**
 (base64 PNG/JPEG) that the model sees natively; questions stay typed
 noul/choice/score and the readout heads are language- and
@@ -193,29 +202,45 @@ passed on the first reading:
 | synth2-EN-val (n=609, English rule skills) | **0.9048** | ≥ 0.90 |
 | fitted ECE (noul / choice / score) | 0.024 / 0.018 / 0.069 | ≤ 0.10 |
 
-**JevBench public half (231 items, official harness, run of record on the
-released pack, 2026-10-02):** composite **63.72**; Intelligence **68.33**
-(best measured; +8.0 over v1); public accuracy **0.766** with hard tier
-**0.559** (+9.0 over v1); top-label ECE 0.0984 (between the text
-variants: intuit 0.1196, meticulous 0.0496); Speed 69.6; 562
-tokens/decision. Per-family, the targeted skills transferred: multi_hop
-0.278 → **0.667**, long_policy 0.316 → 0.421; temporal_numeric (n=15)
-remains the frontier for every model this repo has trained. Statistical
-hygiene: n=231 carries a ±5.9pt CI, so the composite vs v1's 65.71 sits
-inside single-run noise — the separable claims are the hard-tier jump,
-the accuracy gain, and the image/Chinese capability. Full section:
-`docs/JEVBENCH.md`; raw record
-`docs/bench/kapteeni-v1.1c-record-231.jsonl`; the official board's full
-v1.5 protocol (904 open + 720 sealed) runs on Benchmark Heaven's own
-submission pipeline.
+**JevBench public half (231 items, official harness + scorer, run of
+record on the released pack):** composite **63.72**; Intelligence
+**68.33** (best measured; +8.0 over v1); public accuracy **0.766** with
+the hard tier at **0.559** (+9.0); top-label ECE 0.0984 — between the
+text variants (intuit 0.1196, meticulous 0.0496); 562 tokens/decision;
+latency p50 0.26 s / p95 10.6 s (contended iGPU). Statistical hygiene:
+with n=231 the ±5.9pt CI makes the composite-vs-65.71 comparison
+inseparable from noise — the separable claims are hard tier, accuracy,
+and the image/Chinese capability. Per-family, the targeted skills
+transferred: multi_hop 0.278 → **0.667**, long_policy 0.316 → 0.421,
+while temporal_numeric (n=15) stays beyond every model this repo has
+trained (now three in a row). Full section: `docs/JEVBENCH.md`.
 
-The 0.90 mastery bars had falsified every predecessor (v1.1 0.777;
-v1.1b 0.846/0.841 with MNLI erosion) and were never met by any prior
-configuration, including the text flagship's own phase pipeline (~0.81):
-the multi-pass judgment structure is what closed them — the monitor
-trajectory shows the rule skills climbing 0.70 → 0.90+ across the single
-mixed epoch with MNLI pinned at 0.84-0.89 throughout. Full history in
-`WORKLOG.md` (2026-09-29 → 2026-10-02) and the pre-reg's Outcome section.
+### The three shipped variants, side by side
+
+| | v1-meticulous | v1-intuit | v1.1c |
+|---|---:|---:|---:|
+| JevBench-style score (public half) | **65.71** | 63.18 | 63.72 |
+| Intelligence | 60.3 | 61.1 | **68.33** |
+| top-label ECE → Calibration | **0.0496 → 90.1** | 0.1196 → 76.1 | 0.0984 → 80.3 |
+| public accuracy (hard tier) | 0.710 (0.469) | 0.714 (0.468) | **0.766 (0.559)** |
+| skills-slice accuracy (609 EN items) | 0.659 | 0.814 | **0.905** (and 403 zh items: 0.913) |
+| images | — | — | **only this one** |
+| Chinese (state/zh NLI/zh images) | — | — | **only this one** |
+| use when | traffic is unknown, messy, adversarial; confidence values consumed downstream | traffic is well-formed (documents, policies, SLAs, forms); needs numeric/temporal/multi-step judgment | any traffic carrying **images** or **Chinese**; also the strongest on the rule-skill families |
+
+(The full negative-result trail behind this split: the text two-variant
+split's soup/continuation/refit lineage is documented above; the
+multimodal arc's four falsified predecessors and the mechanism that won
+are documented in `docs/PREREG-KAPTEENI-V11C.md`'s outcome and
+`WORKLOG.md` 2026-09-29 → 2026-10-02.)
+
+The 0.90 mastery bars had falsified every preceding recipe in the arc
+(v1.1 0.777; v1.1b 0.846/0.841 with MNLI erosion) and were never met by
+any earlier configuration, including the text flagship's own phase
+pipeline (~0.81): the multi-pass judgment structure is what closed
+them — the monitor trajectory shows the rule skills climbing 0.70 →
+0.90+ across the single mixed epoch with MNLI pinned at 0.84–0.89
+throughout.
 
 Serving constants: the per-primitive temperatures fitted on combined
 held-out val (`model_cache/kapteeni_v11c/final_gates.json` — the only
@@ -281,20 +306,46 @@ demo page carries the same notice next to its attach control.
 
 ## Layout
 
-- `kapteeni/contract.py` — the wire format as executable code (validation, answer
-  shaping, confidence, exact-1 probability sums)
-- `kapteeni/serialize.py` — pass serialization (state JSON text + `[noul]/
-  [choice]/[score]` suffixes; ids never serialized)
-- `kapteeni/backbone.py` — frozen Qwen3-4B-Instruct-2507 (bf16/ROCm), batched
-  `h_last` precompute with resume
-- `kapteeni/heads.py`, `kapteeni/train.py` — per-primitive readout heads, proper-scoring
-  losses (BCE/CE, soft targets), per-head temperature fit
-- `kapteeni/build_data.py`, `kapteeni/criteria.py`, `kapteeni/distill.py` — datasets → rows →
-  passes; teacher-written rubrics; k-sample soft labels
-- `kapteeni/model.py`, `kapteeni/serve.py` — runtime model + stdlib HTTP server
-- `tests/` — E1 (parity), E5 (asymmetry), E6 (score semantics), E11 (schema,
-  end-to-end over HTTP); the suites run against the mock by default and against
-  the trained model via `KAPTEENI_TEST_BUNDLE=`
+Text line (the two shipped variants + their lineage):
+
+- `kapteeni/contract.py` — the wire format as executable code (validation,
+  answer shaping, confidence, exact-1 probability sums; deliberately
+  torch-free) — shared by BOTH lines
+- `kapteeni/serialize.py` — pass serialization (state JSON text +
+  `[noul]/[choice]/[score]` suffixes; ids never serialized) — text line
+- `kapteeni/backbone.py` — frozen Qwen3-4B-Instruct-2507 (bf16/ROCm),
+  batched `h_last` precompute with resume — text line
+- `kapteeni/heads.py`, `kapteeni/train.py` — per-primitive readout heads,
+  proper-scoring losses, per-head temperature fit; `kapteeni/build_data.py`,
+  `kapteeni/criteria.py`, `kapteeni/distill.py` — datasets → rows → passes,
+  teacher rubrics, k-sample soft labels — the text pipeline
+- `kapteeni/train_p2.py`, `kapteeni/p2_finalize.py`, `kapteeni/soup.py`,
+  `kapteeni/fit_diverse.py`, `kapteeni/committee.py` — the P2/variant line
+- `kapteeni/model.py`, `kapteeni/serve.py`, `kapteeni/mock.py`,
+  `kapteeni/pack.py` — the text runtime, HTTP server, mock, packer
+
+Multimodal line (kapteeni-v1.1c):
+
+- `kapteeni/v11c.py` — pass builders (the v1.2 union reused byte-identical
+  + synth2zh + the synth3 image families), chat-template VL encode,
+  `h_last` extraction, heads readout
+- `kapteeni/v11c_precompute.py`, `kapteeni/train_v11c.py` — P1 (precompute
+  + heads) and P2 (LoRA + heads, joint) per the pre-registration
+- `kapteeni/model_v11c.py` — the served model: `state.image` extraction,
+  image bounding, per-question forwards, fitted temperatures
+- `kapteeni/serve_v11c.py` — the multimodal HTTP server + demo website,
+  `--dist`/`--hf`/`--mock`
+- `kapteeni/pack_v11c.py` — the release packer (merged model + heads
+  safetensors + config + card + demo)
+- `kapteeni/vl_format.py`, `kapteeni/synth3*`, `kapteeni/synth2*` — the
+  lettered one-pass format (training-era) and the gold-by-construction
+  generators
+- `scripts/make_demo.py`, `kapteeni/demo/` — the demo website
+- `tests/` — E1 (parity), E5 (asymmetry), E6 (score semantics), E11
+  (schema, end-to-end over HTTP) + the v1.1c suite (pass builders,
+  image extraction, serving end-to-end); the suites run against the
+  mock by default and against trained models via `KAPTEENI_TEST_BUNDLE=`
+
 
 ## Run
 
