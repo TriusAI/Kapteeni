@@ -7,7 +7,7 @@ line: **kapteeni-v1.1c** — one Qwen3.5-4B backbone answering noul/choice/score
 questions over states with **attached images**, in English and Chinese, all
 pre-registered gates passed (2026-10-02), **published at
 [huggingface.co/TriusAI/kapteeni-v1.1c](https://huggingface.co/TriusAI/kapteeni-v1.1c)**
-(pinned revision `17affb8`). `docs/JEVBENCH.md` holds every
+(pinned revision `9cbc9e3`). `docs/JEVBENCH.md` holds every
 benchmark number and the full experiment history; `docs/EVAL.md` the
 calibration report.
 
@@ -249,7 +249,7 @@ constants fitted anywhere in the line, per the pre-registration).
 **Published:** [huggingface.co/TriusAI/kapteeni-v1.1c](https://huggingface.co/TriusAI/kapteeni-v1.1c)
 — the distribution pack of 2026-10-02 (merged model, heads, fitted
 constants, model card, the serving package + demo website), pinned at
-revision `17affb8`; weights CC BY-SA 4.0, code/generators Apache-2.0.
+revision `9cbc9e3`; weights CC BY-SA 4.0, code/generators Apache-2.0.
 
 ## Demo website (local)
 

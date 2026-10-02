@@ -184,7 +184,7 @@ extension documented, and the no-leaderboard-claims policy as for v1.
   the HF API: 69 files (the full pack incl. kapteeni/ + demo), card
   tags resolved (license: cc-by-sa-4.0, base Qwen/Qwen3.5-4B, en, zh,
   image-text-to-text).
-- **Pinned revision: `17affb8670dcf466550a755bfd78a19b3dce615d`** —
+- **Pinned revision: `9cbc9e32ef547b8376eae75b80719d1a16a6021b`** —
   this is the hash bench requests / README citations must carry for
   the 1.1c line (the text variants' pinned revisions are 8c1abcf /
   6466d70).

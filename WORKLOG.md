@@ -903,3 +903,16 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   FROM THE DIST after every pack build (serve --dist with
   cwd=dist/kapteeni, not PYTHONPATH=repo) before upload. #TODO on the
   next packer revision: a post-pack smoke runner.
+
+## 2026-10-03 — re-upload verified; pin migrated
+
+- Re-upload confirmed via the HF API + raw-file fetches: kapteeni/v11c.py
+  (the wrapper-agnostic _inner_of fix) and README.md (the rewritten
+  card) on HF are byte-identical to the dist; 69 files; lastModified
+  2026-10-02T15:14Z.
+- **Pin sweep: the 1.1c line's pinned revision is now
+  `9cbc9e32ef547b8376eae75b80719d1a16a6021b`** (README x2 + PUBLISH-HF
+  §6; the worklog's first-upload record keeps the original 17affb86
+  hash as history — that pin was superseded by the defect-resolution
+  re-upload). The bench request #178's pinned-artifacts row is edited
+  to the new revision in this session.
