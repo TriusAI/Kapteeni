@@ -153,18 +153,32 @@ class SystemOneV11C:
     """The trained multimodal model (torch loads lazily; GPU at serve time)."""
 
     def __init__(self, base: str, adapter: str, heads_path: str,
-                 temps: dict[str, float], device: str = "cuda"):
+                 temps: dict[str, float], device: str = "cuda",
+                 in_dim: int = 2560):
         self.base = base
         self.adapter = adapter
         self.heads_path = heads_path
         self.temps = temps
         self.device = device
+        self.in_dim = in_dim
         self._loaded = False
+
+    @classmethod
+    def from_dist(cls, dist_dir: str, device: str = "cuda"):
+        """A packaged distribution (pack_v11c layout): merged model +
+        heads.safetensors + kapteeni-config.json; no peft needed."""
+        import json as _json
+        from pathlib import Path as _Path
+
+        d = _Path(dist_dir)
+        cfg = _json.loads((d / "kapteeni-config.json").read_text())
+        return cls(str(d), "", str(d / "heads.safetensors"),
+                   cfg["head_temperatures"], device=device,
+                   in_dim=cfg.get("in_dim", 2560))
 
     def _load(self):
         import torch
         from transformers import AutoModelForImageTextToText, AutoProcessor
-        from peft import PeftModel
         from kapteeni.heads import PassMLP
         from kapteeni.v11c import _inner_of, _last_h, vl_inputs
 
@@ -174,16 +188,33 @@ class SystemOneV11C:
         proc = AutoProcessor.from_pretrained(self.base)
         model = AutoModelForImageTextToText.from_pretrained(
             self.base, dtype=torch.bfloat16).to(self.device)
-        model = PeftModel.from_pretrained(model, self.adapter)
+        if self.adapter:  # artifact path: adapter on the base
+            from peft import PeftModel
+            model = PeftModel.from_pretrained(model, self.adapter)
         model.eval()
         # the fp32 tower (the NaN-diagnosis fix; see the pre-reg's
         # engineering note) — serving uses the same numerics as training
         inner = _inner_of(model)
         if hasattr(inner, "visual"):
             inner.visual.float()
-        sd = torch.load(self.heads_path, weights_only=True)
+        str_path = str(self.heads_path)
+        if str_path.endswith(".safetensors"):  # the dist ships safetensors
+            from safetensors.torch import load_file
+            sd = load_file(str_path)
+        else:
+            sd = torch.load(str_path, weights_only=True)
+        heads_sd = sd
+        # pack_v11c ships a FLAT safetensors dict (noul.net.0.weight ...);
+        # the artifact path ships a nested {primitive: state_dict}.
+        first = next(iter(heads_sd))
+        if "." in first and isinstance(first, str) and \
+                first.split(".")[0] in ("noul", "choice", "score"):
+            heads_sd = {}
+            for k, v in sd.items():
+                qt, rest = k.split(".", 1)
+                heads_sd.setdefault(qt, {})[rest] = v
         heads = {}
-        for qt, h_sd in sd.items():
+        for qt, h_sd in heads_sd.items():
             head = PassMLP(h_sd["net.0.weight"].shape[1]).to(self.device)
             head.load_state_dict(h_sd)
             head.eval()

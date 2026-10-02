@@ -241,6 +241,30 @@ def test_server_image_request_end_to_end(server):
     assert resp["usage"]["input_tokens"] > 0
 
 
+def test_from_dist_roundtrip(tmp_path):
+    """pack_v11c's layout round-trips torch-free: config + heads
+    safetensors -> from_dist -> constructor paths + temperatures (the
+    torch model itself loads lazily at serve time)."""
+    from safetensors.torch import save_file
+    from kapteeni.heads import PassMLP
+    d = tmp_path / "dist"
+    d.mkdir()
+    (d / "kapteeni-config.json").write_text(json.dumps({
+        "served_as": "kapteeni-v1.1c", "in_dim": 4,
+        "head_temperatures": {"noul": 1.2, "choice": 0.9, "score": 1.8}}))
+    head = PassMLP(4)
+    tensors = {}
+    for qt in ("noul", "choice", "score"):
+        for k, v in head.state_dict().items():  # clone: one storage
+            tensors[f"{qt}.{k}"] = v.clone()     # shared 3x otherwise
+    save_file(tensors, str(d / "heads.safetensors"))
+    from kapteeni.model_v11c import SystemOneV11C
+    m = SystemOneV11C.from_dist(str(d))
+    assert m.temps == {"noul": 1.2, "choice": 0.9, "score": 1.8}
+    assert m.in_dim == 4 and m.adapter == ""  # merged-model path
+    assert not m._loaded  # nothing heavy happened during construction
+
+
 def test_server_bad_image_422(server):
     body = {"state": {"image": "!!!not-base64!!!", "note": "x"},
             "model": "jev-latest",

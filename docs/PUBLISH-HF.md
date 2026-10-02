@@ -133,3 +133,47 @@ variant's real name.
 - [ ] Optionally open a JevBench discussion/PR on the benchmark repo if
       you want the public-half runs listed (their submission process will
       re-run the sealed half — the one axis we cannot measure)
+## 5. kapteeni-v1.1c (the multimodal line)
+
+The multimodal pack is built by the mirrored packer:
+
+```bash
+HF_HUB_OFFLINE=1 PYTHONPATH=. python3 -m kapteeni.pack_v11c
+# -> ../kapteeni-v1.1c-dist (8.6G: MERGED model + heads.safetensors +
+#    kapteeni-config.json + card + licenses + the kapteeni/ serving
+#    package incl. the demo website)
+```
+
+Validate the pack BEFORE upload (merged numerics must reproduce the
+gated artifact-path behavior; LoRA merge is exact-linear, so the only
+drift is bf16 rounding in the 2nd-3rd decimal — no decision flips):
+
+```bash
+HF_HUB_OFFLINE=1 python3 -m kapteeni.serve_v11c \
+    --dist ../kapteeni-v1.1c-dist --port 8021
+# then run the 15-case demo verification against :8021
+# expected: same decisions as the artifact path; probabilities within
+# the 3rd decimal; 20/23 vs gold
+```
+
+Upload target: `TriusAI/kapteeni-v1.1c`
+
+```bash
+huggingface-cli upload TriusAI/kapteeni-v1.1c ../kapteeni-v1.1c-dist . \
+    --repo-type model
+# then pin the revision in docs/BENCH-REQUEST.md / README as usual
+```
+
+Users run it exactly as the text variants:
+
+```bash
+HF_HUB_OFFLINE=1 python3 -m kapteeni.serve_v11c --hf TriusAI/kapteeni-v1.1c
+# → API at /v1/systemone (state.image carries base64 images),
+#   demo website at /
+```
+
+Card checklist for 1.1c: `base_model: Qwen/Qwen3.5-4B` (Apache-2.0
+backbone), weights CC BY-SA 4.0, the six-gate table verbatim (images
+0.9661 / Chinese images 0.9412 / MNLI 0.88 / OCNLI 0.8467 / synth2zh
+0.9132 / synth2-EN 0.9048 / ECE 0.0241-0.0685), the state.image wire
+extension documented, and the no-leaderboard-claims policy as for v1.

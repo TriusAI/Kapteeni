@@ -274,12 +274,15 @@ demo page carries the same notice next to its attach control.
 
 ```bash
 cd kapteeni
-python3 -m pytest                          # 90+ tests, mock model, no GPU needed
+python3 -m pytest                          # 170+ tests, mock model, no GPU needed
 
 # serve a variant (from Hugging Face, or a local distribution pack)
 python3 -m kapteeni.serve --hf TriusAI/kapteeni-v1-meticulous --port 8000
 python3 -m kapteeni.serve --dist ./kapteeni-v1-meticulous-dist --port 8000
 python3 -m kapteeni.serve --dist ./kapteeni-v1-intuit-dist --port 8000
+
+# serve the multimodal line (API takes state.image; demo site at /)
+python3 -m kapteeni.serve_v11c --dist ./kapteeni-v1.1c-dist --port 8002
 
 # or from local training artifacts
 python3 -m kapteeni.serve --bundle model_cache/kapteeni_v1.pt \

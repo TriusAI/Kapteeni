@@ -165,6 +165,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--mock", action="store_true",
                     help="serve MockV11C (no GPU; interface + demo dry-run)")
+    ap.add_argument("--dist", default="",
+                    help="packaged distribution dir (pack_v11c layout: "
+                         "merged model + heads.safetensors + config)")
+    ap.add_argument("--hf", default="",
+                    help="Hugging Face repo id of a packaged distribution")
     ap.add_argument("--warmup", action="store_true", default=True,
                     help="pre-run one forward per demo image size at "
                          "startup (amortizes the box's per-shape GDN "
@@ -176,6 +181,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--gates", default="",
                     help="final_gates.json (the fitted temperatures)")
     args = ap.parse_args(argv)
+    if args.hf:
+        from huggingface_hub import snapshot_download
+
+        args.dist = snapshot_download(args.hf)
 
     adapter = args.adapter or f"{DEFAULT_OUT}/adapter"
     heads = args.heads or f"{DEFAULT_OUT}/heads.pt"
@@ -185,16 +194,21 @@ def main(argv: list[str] | None = None) -> int:
               "model, or omit --mock with defaults)", flush=True)
         model = MockV11C()
     else:
-        for p in (adapter, heads, gates):
-            if not Path(p).exists():
-                print(f"error: {p} not found (train v1.1c first, or pass "
-                      f"--mock for the interface demo)", flush=True)
-                return 2
-        temps = json.loads(Path(gates).read_text())["fit_temps"]
-        print(f"loading kapteeni-v1.1c (base {args.base}, fitted temps "
-              f"{temps}) ...", flush=True)
         from kapteeni.model_v11c import SystemOneV11C
-        model = SystemOneV11C(args.base, adapter, heads, temps)
+        if args.dist:
+            print(f"loading packaged distribution from {args.dist} ...",
+                  flush=True)
+            model = SystemOneV11C.from_dist(args.dist)
+        else:
+            for p in (adapter, heads, gates):
+                if not Path(p).exists():
+                    print(f"error: {p} not found (train v1.1c first, or "
+                          f"pass --mock for the interface demo)", flush=True)
+                    return 2
+            temps = json.loads(Path(gates).read_text())["fit_temps"]
+            print(f"loading kapteeni-v1.1c (base {args.base}, fitted temps "
+                  f"{temps}) ...", flush=True)
+            model = SystemOneV11C(args.base, adapter, heads, temps)
         if args.warmup:
             sizes = [(640, 640)]
             demo_imgs = sorted((DEMO_DIR / "images").glob("*")) \

@@ -748,3 +748,26 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   3000x3000 yes) with the same plain-terms wording. README limits
   paragraph updated to match. Notice test extended to the boundary
   matrix; 169 tests green.
+
+## 2026-10-02 (evening) — PACKAGED: ../kapteeni-v1.1c-dist for release
+
+- pack_v11c.py (mirroring pack.py): loads base + the trained v1.1c
+  adapter, merge_and_unload(), saves the merged model (bf16
+  safetensors + tokenizer + processor + chat template) — the release
+  artifact carries no peft dependency; heads -> flat
+  heads.safetensors (no pickles); kapteeni-config.json embeds the
+  pre-registered fitted temperatures + fitted ECE + every gate
+  accuracy; model card (frontmatter base_model Qwen/Qwen3.5-4B, the
+  six-gate table, demo instructions); LICENSE + WEIGHTS-LICENSE.md;
+  the kapteeni/ serving package incl. the demo website.
+- Pack validated LIVE (serve_v11c --dist ../kapteeni-v1.1c-dist):
+  identical decisions to the artifact-path runs on all 15 demo cases
+  (20/23 vs gold); probability drift confined to the 2nd-3rd decimal
+  (bf16 merge rounding — expected, no flips).
+- serve_v11c: --dist (merged-model load, no peft) + --hf
+  (snapshot_download -> from_dist) implemented, round-trip tested
+  torch-free; 172 tests green.
+- Release command: huggingface-cli upload TriusAI/kapteeni-v1.1c
+  ../kapteeni-v1.1c-dist . --repo-type model (the publishing workflow
+  in docs/PUBLISH-HF.md section 5; the upload itself awaits the
+  user's credentials, per the repo's push policy).
