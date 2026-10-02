@@ -588,3 +588,30 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   final gates roughly 18-22h from launch. Monitors every 300 steps to
   data_cache/v11c_monitors.jsonl; abort rule + 150-step ckpt/resume
   armed. The gates run ONCE on the completed model.
+
+## 2026-10-02 — v1.1c: ALL GATES PASS — first image-capable model of
+## the arc; ship as kapteeni-v1.1c
+
+- One run, one reading (docs/PREREG-KAPTEENI-V11C.md Outcome): 3,398
+  steps / 24.1M real tokens / ~46h wall / zero skips / no aborts.
+  Gates: synth3-val 0.9661 (> 0.8068 frozen), MNLI 0.88 (>= 0.84),
+  OCNLI 0.8467 (>= 0.83), synth2zh 0.9132 (>= 0.90), synth2-EN 0.9048
+  (>= 0.90), fitted ECE 0.0241/0.0175/0.0685 (<= 0.10); synth3zh-val
+  reported 0.9412. ALL PASS — the first configuration ever to clear
+  the 0.90 mastery bars (v1.1 0.777; v1.1b 0.846/0.841 w/ MNLI
+  erosion; the text line's best ~0.81). Monitor trajectory shows the
+  mechanism cleanly: skills flat ~0.70 through step 900 (mixed-epoch
+  exposure ~6x lower than v1.1b's at equal step), climb from 1200,
+  one dip at 1800 inside noise, MNLI pinned 0.84-0.89 THROUGHOUT —
+  the skills-without-erosion discriminator no lettered run ever
+  showed. Full-slice gate readings at/above the monitor subslices.
+- Run-of-record caveats, recorded honestly: the run's wall cost was
+  dominated by the box's image throughput (~150-160 tok/s sustained,
+  the known per-shape GDN kernel tax) — 2 days for one epoch; the
+  fp32-tower fix held with the skip-guard never firing.
+- Artifacts: model_cache/kapteeni_v11c/{adapter,heads.pt,recipe.json,
+  final_gates.json}; data_cache/v11c_emb.pt (P1 precompute),
+  kapteeni_v11c_p1.pt (P1 bundle), v11c_monitors.jsonl (11 rounds).
+- NEXT per the decision rule: extend serving with the `state.image`
+  wire field and ship as kapteeni-v1.1c (serving work; see the
+  v1.1/v1.1b pre-regs' identical ship clauses).

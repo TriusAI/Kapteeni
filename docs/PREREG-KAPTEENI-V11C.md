@@ -185,3 +185,42 @@ These are stack-numerics repairs of the instrument, not recipe changes:
 LoRA config, data, losses, lr, budget, gates and decision rule are
 exactly as pre-registered above. The NaN casualty never reached a
 checkpoint or monitor round and is not a run of record.
+
+## Outcome (2026-10-02, ~09:20) — ALL GATES PASS: ship
+
+One run: 3,398 steps / 24.1M real tokens / ~46h wall / zero skipped
+batches (the fp32 tower held for the entire run) / no abort triggers /
+peak <= 40G of 96G. Monitor history: data_cache/v11c_monitors.jsonl
+(11 rounds; skills flat ~0.70 through step 900, climbed from 1200 on,
+one mixture-region dip at 1800 well inside the abort rule, final
+round 3300: MNLI 0.88 / OCNLI 0.8533 / synth3 0.96 / synth2zh 0.915 /
+synth2-EN 0.90).
+
+Final gates on the completed model (full slices, heads readout, fitted
+temperatures 1.2071/0.9911/1.8348 on combined val, per the frozen
+procedure):
+
+| gate | result | requirement | verdict |
+|---|---:|---|---|
+| synth3-val (n=590) | 0.9661 | > 0.8068 | PASS |
+| MNLI-noul (n=150) | 0.8800 | >= 0.84 | PASS |
+| OCNLI-noul (n=150) | 0.8467 | >= 0.83 | PASS |
+| synth2zh-val (n=403) | 0.9132 | >= 0.90 | **PASS** |
+| synth2-EN-val (n=609) | 0.9048 | >= 0.90 | **PASS** |
+| fitted ECE (noul/choice/score) | 0.0241 / 0.0175 / 0.0685 | <= 0.10 | PASS |
+| synth3zh-val (reported, ungated) | 0.9412 (n=204) | — | arc-best |
+
+First configuration to clear the 0.90 mastery bars — v1.1 0.7767,
+v1.1b 0.8462/0.8407 with MNLI eroded 0.86 -> 0.82, best-ever text
+line (v1.2 through the served blend) ~0.81. The full-slice readings
+sat AT OR ABOVE the [:200] monitor subslices (the lettered
+instrument's gap did not reappear). The mechanism verdict: the
+multi-pass judgment structure + distillation-weighted targets +
+heads readout delivered the rule skills AND the NLI gates AND the
+image families simultaneously — the "skills vs. erosion" trade that
+every single-pass answer-SFT run hit (V2, V2.1, v1.1, v1.1b) is
+absent from this run's entire trajectory.
+
+Per the pre-registered decision rule: fit constants (done — the
+fitted temperatures above), extend serving with the `state.image`
+wire field, ship as **kapteeni-v1.1c**.
