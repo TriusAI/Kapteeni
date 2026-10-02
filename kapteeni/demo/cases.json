@@ -302,6 +302,126 @@
    "provenance": "真实照片（截图），人工核对（从未进入任何训练划分）"
   },
   {
+   "id": "bookfair-en",
+   "title": "Art book fair window, real photograph (OOD probe)",
+   "blurb": "A second batch of real photographs. This one is lettering ON GLASS shot at night, with street reflections and a steel shutter running through the text — the kind of input no synthetic render pipeline produces. Gold is hand-read from the photo.",
+   "family": "real_photo",
+   "image": "images/sign-4.jpg",
+   "gold": {
+    "dates": "4-14 December 2025",
+    "sat_close": "no"
+   },
+   "gold_label": "hand",
+   "request": {
+    "state": {
+     "image": "@file:images/sign-4.jpg",
+     "note": "White window lettering for the Dublin Art Book Fair, 4-14 December 2025, with opening hours."
+    },
+    "model": "kapteeni-v1.1c",
+    "questions": {
+     "dates": {
+      "type": "choice",
+      "instructions": "On which dates does the Dublin Art Book Fair run?",
+      "criteria": {
+       "4-14 December 2025": null,
+       "14-24 December 2025": null,
+       "4-14 November 2025": null,
+       "1-14 December 2025": null
+      }
+     },
+     "sat_close": {
+      "type": "noul",
+      "instructions": "Is the fair open until 7pm on a Saturday?",
+      "criteria": {
+       "true": "Saturday opening hours run until 7pm",
+       "false": "Saturday opening ends earlier than 7pm"
+      }
+     }
+    }
+   },
+   "provenance": "real photograph, hand-checked (never in any training split)"
+  },
+  {
+   "id": "recordshop-en",
+   "title": "Record shop sign, real photograph (OOD probe)",
+   "blurb": "Hand-painted gold-on-black shop sign (The R.A.G.E., Crow St, Dublin) with five listed categories, plus a phone, email and address line. Real-world typography — script, stencil and caps mixed — far outside the render distribution.",
+   "family": "real_photo",
+   "image": "images/sign-5.jpg",
+   "gold": {
+    "address": "8 Crow St.",
+    "buys": "yes"
+   },
+   "gold_label": "hand",
+   "request": {
+    "state": {
+     "image": "@file:images/sign-5.jpg",
+     "note": "A black-painted shop sign for The R.A.G.E. record shop, gold and white lettering."
+    },
+    "model": "kapteeni-v1.1c",
+    "questions": {
+     "address": {
+      "type": "choice",
+      "instructions": "What street address does the sign give?",
+      "criteria": {
+       "8 Crow St.": null,
+       "18 Crow St.": null,
+       "8 Grafton St.": null,
+       "8 Temple Bar": null
+      }
+     },
+     "buys": {
+      "type": "noul",
+      "instructions": "According to the sign, do they also buy second hand cassettes?",
+      "criteria": {
+       "true": "the sign says they buy all of the listed items, cassettes included",
+       "false": "the sign does not say they buy cassettes"
+      }
+     }
+    }
+   },
+   "provenance": "real photograph, hand-checked (never in any training split)"
+  },
+  {
+   "id": "weather-app-en",
+   "title": "Weather app week view, real screenshot",
+   "blurb": "A phone weather app (omWeather, Dublin tab) — small dense type, a colored table and a chart in one screenshot. The hardest kind of interface text; gold hand-read from the screen.",
+   "family": "real_photo",
+   "image": "images/sign-6.jpg",
+   "gold": {
+    "max_day": "Monday",
+    "rain_cmp": "yes"
+   },
+   "gold_label": "hand",
+   "request": {
+    "state": {
+     "image": "@file:images/sign-6.jpg",
+     "note": "A phone screenshot of the omWeather app showing Dublin's week view."
+    },
+    "model": "kapteeni-v1.1c",
+    "questions": {
+     "max_day": {
+      "type": "choice",
+      "instructions": "Which weekday shows the highest maximum temperature in the week view?",
+      "criteria": {
+       "Friday": null,
+       "Saturday": null,
+       "Sunday": null,
+       "Monday": null
+      }
+     },
+     "rain_cmp": {
+      "type": "noul",
+      "instructions": "Does the week view show more precipitation on Friday than on Tuesday?",
+      "criteria": {
+       "true": "Friday shows more rain than Tuesday",
+       "false": "Friday does not show more rain than Tuesday"
+      }
+     }
+    }
+   },
+   "provenance": "real screenshot, hand-checked (never in any training split)"
+  },
+  {
    "id": "temporal-en",
    "title": "Date arithmetic — text noul",
    "blurb": "The temporal_numeric skill family: exact date arithmetic with weekday-consistent trap dates. No image — decisions over structured state alone.",

@@ -205,6 +205,9 @@ REAL_PHOTOS = (  # (repo-root original, demo copy, longest edge)
     ("sign_test_1.jpg", "images/sign-1.jpg"),
     ("sign_test_2.jpg", "images/sign-2.jpg"),
     ("sign_test_3.png", "images/sign-3.jpg"),
+    ("sign_test_4.jpg", "images/sign-4.jpg"),
+    ("sign_test_5.png", "images/sign-5.jpg"),
+    ("sign_test_6.png", "images/sign-6.jpg"),
 )
 
 
@@ -306,9 +309,92 @@ def build_real_cases():
     return cases
 
 
+
+def build_real_cases_b() -> list[dict]:
+    """The 2026-10-02 afternoon batch: Dublin Art Book Fair window,
+    The R.A.G.E. record shop, omWeather screenshot."""
+    cases = []
+    # 6 — the book-fair window (EN, through-glass lettering)
+    cases.append(real_case(
+        "bookfair-en", "Art book fair window, real photograph (OOD probe)",
+        "A second batch of real photographs. This one is lettering ON "
+        "GLASS shot at night, with street reflections and a steel shutter "
+        "running through the text — the kind of input no synthetic "
+        "render pipeline produces. Gold is hand-read from the photo.",
+        "images/sign-4.jpg",
+        "White window lettering for the Dublin Art Book Fair, 4-14 "
+        "December 2025, with opening hours.",
+        {"dates": {"type": "choice",
+                   "instructions": "On which dates does the Dublin Art "
+                                   "Book Fair run?",
+                   "criteria": {"4-14 December 2025": None,
+                                "14-24 December 2025": None,
+                                "4-14 November 2025": None,
+                                "1-14 December 2025": None}},
+         "sat_close": {"type": "noul",
+                       "instructions": "Is the fair open until 7pm on a "
+                                       "Saturday?",
+                       "criteria": {"true": "Saturday opening hours run "
+                                            "until 7pm",
+                                    "false": "Saturday opening ends "
+                                             "earlier than 7pm"}}},
+        {"dates": "4-14 December 2025", "sat_close": "no"},
+        "real photograph, hand-checked (never in any training split)"))
+    # 5 — the record shop (EN, gold on painted black)
+    cases.append(real_case(
+        "recordshop-en", "Record shop sign, real photograph (OOD probe)",
+        "Hand-painted gold-on-black shop sign (The R.A.G.E., Crow St, "
+        "Dublin) with five listed categories, plus a phone, email and "
+        "address line. Real-world typography — script, stencil and caps "
+        "mixed — far outside the render distribution.",
+        "images/sign-5.jpg", "A black-painted shop sign for The R.A.G.E. "
+        "record shop, gold and white lettering.",
+        {"address": {"type": "choice",
+                     "instructions": "What street address does the sign "
+                                     "give?",
+                     "criteria": {"8 Crow St.": None, "18 Crow St.": None,
+                                  "8 Grafton St.": None,
+                                  "8 Temple Bar": None}},
+         "buys": {"type": "noul",
+                  "instructions": "According to the sign, do they also "
+                                  "buy second hand cassettes?",
+                  "criteria": {"true": "the sign says they buy all of the "
+                                       "listed items, cassettes included",
+                               "false": "the sign does not say they buy "
+                                        "cassettes"}}},
+        {"address": "8 Crow St.", "buys": "yes"},
+        "real photograph, hand-checked (never in any training split)"))
+    # 6 — the omWeather screenshot (EN, tabular week view)
+    cases.append(real_case(
+        "weather-app-en", "Weather app week view, real screenshot",
+        "A phone weather app (omWeather, Dublin tab) — small dense type, "
+        "a colored table and a chart in one screenshot. The hardest kind "
+        "of interface text; gold hand-read from the screen.",
+        "images/sign-6.jpg", "A phone screenshot of the omWeather app "
+        "showing Dublin's week view.",
+        {"max_day": {"type": "choice",
+                     "instructions": "Which weekday shows the highest "
+                                     "maximum temperature in the week "
+                                     "view?",
+                     "criteria": {"Friday": None, "Saturday": None,
+                                  "Sunday": None, "Monday": None}},
+         "rain_cmp": {"type": "noul",
+                      "instructions": "Does the week view show more "
+                                      "precipitation on Friday than on "
+                                      "Tuesday?",
+                      "criteria": {"true": "Friday shows more rain than "
+                                           "Tuesday",
+                                   "false": "Friday does not show more "
+                                            "rain than Tuesday"}}},
+        {"max_day": "Monday", "rain_cmp": "yes"},
+        "real screenshot, hand-checked (never in any training split)"))
+    return cases
+
+
 def main() -> int:
     refresh_real_images()
-    cases = build_image_cases() + build_real_cases() + build_text_cases()
+    cases = (build_image_cases() + build_real_cases()
+              + build_real_cases_b() + build_text_cases())
     (DEMO / "images").mkdir(parents=True, exist_ok=True)
     (DEMO / "cases.json").write_text(json.dumps(
         {"model": MODEL, "cases": cases}, ensure_ascii=False, indent=1))

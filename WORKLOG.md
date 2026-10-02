@@ -714,3 +714,22 @@ Also: evaluate() must tolerate absent `criteria` on noul questions
   are unchanged knowns (weather level-boundary expectation 3.006;
   one calibrated zh hedge at P=0.72). Real-case latency 2.2-3.5s
   (was 34-97s pre-warmup). Tests at 169 green.
+
+## 2026-10-02 (late afternoon) — second real-photo batch integrated
+
+- sign_test_4/5/6 (Dublin Art Book Fair window lettering through glass;
+  The R.A.G.E. gold-on-black painted shop sign; an omWeather Dublin
+  week-view phone screenshot) added as 3 more real cases (2 questions
+  each, hand-read gold; REAL_PHOTOS extended in place, make_demo.py
+  regeneration verified clone-safe — a first attempt appended the
+  extension after the __main__ guard, which silently no-opped on
+  regeneration; caught by the image-existence check and fixed by
+  editing inside the definition).
+- Trained-model verification (15 cases, all live): 20/23 vs gold.
+  bookfair-en 2/2 (the 7pm-Saturday boundary read sharply: P=0.00 vs
+  gold no), recordshop-en 2/2 (address 8 Crow St. conf 1.00; WE ALSO
+  BUY P=1.00), weather-app-en 1/2 — honest miss: max_day read Friday
+  [0.88] where the week table shows Monday 19.7C; small dense
+  tabular type in a screenshot is exactly the OOD frontier the page
+  frames. New cases served at 2.3-3.8s (the 12-size warmup covered
+  them: 11s at startup).
