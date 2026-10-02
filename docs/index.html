@@ -35,14 +35,17 @@
             System One API (<a href="https://docs.typesafe.ai">Jev</a>); Kapteeni
             reimplements it end-to-end on local hardware — a frozen
             Qwen3-4B-Instruct-2507 backbone with trained readout heads.</p>
-          <p class="body-copy">Status: v1 is trained, evaluated, and served as two
-            variants — <em>kapteeni-v1-meticulous</em> (the default; conservative
-            confidence for unknown traffic) and <em>kapteeni-v1-intuit</em> (sharper
-            decisions on well-formed numeric, temporal, and multi-step traffic).
-            Both are published on Hugging Face under
-            <a href="https://huggingface.co/TriusAI">TriusAI</a>. Every benchmark
-            number in this manual is a self-reported public-half measurement; see
-            <a href="bench.html">Benchmarks</a>.</p>
+          <p class="body-copy">Status: <em>two shipped lines.</em> The text
+            flagship — <em>kapteeni-v1-meticulous</em> (the default; conservative
+            confidence for unknown traffic) and <em>kapteeni-v1-intuit</em>
+            (sharper decisions on well-formed numeric, temporal, and multi-step
+            traffic). The multimodal line — <em>kapteeni-v1.1c</em>: images and
+            Chinese added, trained per pre-registration with every gate passed
+            (2026-10-02), and published on Hugging Face at pinned revision
+            <code>17affb8</code>. All three are under
+            <a href="https://huggingface.co/TriusAI">TriusAI</a> on Hugging Face.
+            Every benchmark number in this manual is a self-reported public-half
+            measurement; see <a href="bench.html">Benchmarks</a>.</p>
         </section>
 
         <img class="ramp" src="assets/ramp.png" alt="" aria-hidden="true">
@@ -59,10 +62,15 @@
               adding or removing a question never changes another answer
               (test E1).</figcaption>
           </figure>
+          <p>The multimodal line keeps this exact structure: it adds only the
+            optional <code>state.image</code> field, and the image is re-attached
+            to every option/level pass — which is why E1 independence is exact
+            there too, and why an image question costs several forwards
+            (~4&#8211;7 s; text-only ~0.2 s on the training box).</p>
         </section>
 
         <section class="doc-section" id="variants">
-          <h2><span class="sec-no">&#167;&#8202;2</span>The two shipped variants</h2>
+          <h2><span class="sec-no">&#167;&#8202;2</span>The two text variants, side by side</h2>
           <p>Both variants share one architecture and one wire format; they differ
             in training data and serving constants, and are good at different
             things.</p>
@@ -93,8 +101,78 @@
             -intuit with honest guidance about when to prefer them.</p>
         </section>
 
+        <section class="doc-section" id="multimodal">
+          <h2><span class="sec-no">&#167;&#8202;3</span>The multimodal line: kapteeni-v1.1c</h2>
+          <p>One model, one wire contract. A state may carry an
+            <code>image</code> field (base64 PNG/JPEG, at most 8 MiB decoded
+            bytes) that the backbone sees natively; questions stay typed
+            noul/choice/score, and the readout heads are language- and
+            modality-agnostic. English and Chinese are both trained and
+            gated.</p>
+          <p>Trained per the pre-registration
+            (<a href="https://github.com/TriusAI/Kapteeni/blob/main/docs/PREREG-KAPTEENI-V11C.md">PREREG-KAPTEENI-V11C.md</a>):
+            the v1 phase pipeline (multi-pass per-option judgment,
+            distillation-weighted targets, group-CE in-loss, heads on the final
+            hidden state, P1 heads &#8594; P2 LoRA+heads) ported to
+            Qwen3.5-4B. One run; every pre-registered gate passed on the first
+            reading:</p>
+          <div class="table-scroll">
+            <table class="data">
+              <caption>Context for the bars: the 0.90 mastery bars had
+                falsified every predecessor (v1.1 0.777; v1.1b 0.846/0.841 with
+                MNLI erosion; the text flagship's own phase pipeline ~0.81) —
+                the multi-pass judgment structure is what closed them.</caption>
+              <thead>
+                <tr><th>Gate</th><th class="num">Reading</th><th>Bar</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>synth3-val (n=590, English image decisions)</td><td class="num"><strong>0.9661</strong></td><td>&gt; 0.8068 (frozen base)</td></tr>
+                <tr><td>synth3zh-val (n=204, Chinese image decisions)</td><td class="num">0.9412</td><td>reported, no bar</td></tr>
+                <tr><td>MNLI-noul (n=150, English text — never trained on)</td><td class="num">0.8800</td><td>&#8805; 0.84</td></tr>
+                <tr><td>OCNLI-noul (n=150, Chinese text — never trained on)</td><td class="num">0.8467</td><td>&#8805; 0.83</td></tr>
+                <tr><td>synth2zh-val (n=403, Chinese rule skills)</td><td class="num"><strong>0.9132</strong></td><td>&#8805; 0.90</td></tr>
+                <tr><td>synth2-EN-val (n=609, English rule skills)</td><td class="num"><strong>0.9048</strong></td><td>&#8805; 0.90</td></tr>
+                <tr><td>fitted ECE (noul / choice / score)</td><td class="num">0.024 / 0.018 / 0.069</td><td>&#8804; 0.10</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>JevBench public half through the released pack: composite 63.72,
+            Intelligence 68.33, ECE 0.0984 — read honestly on the
+            <a href="bench.html">Benchmarks</a> page (the composite is not
+            separable from v1 at n=231; the separable claims are the hard-tier
+            jump, the accuracy gain, and the image/Chinese capability). The
+            serving constants — per-primitive temperatures fitted on combined
+            held-out val — are the only constants fitted anywhere in the
+            line.</p>
+          <h3>Published</h3>
+          <p><a href="https://huggingface.co/TriusAI/kapteeni-v1.1c">huggingface.co/TriusAI/kapteeni-v1.1c</a>
+            — the 2026-10-02 distribution pack: merged model, heads, fitted
+            constants, model card, serving package + demo website; pinned at
+            revision <code>17affb8</code> (cite the pin; repo main may advance
+            past it for card and doc updates only); weights CC BY-SA 4.0,
+            code/generators Apache-2.0.</p>
+          <h3>Demo website</h3>
+          <p>The v1.1c server ships a self-contained, same-origin demo page
+            (open the server root): 15 pre-configured cases — nine generated
+            fresh from the training generators with gold answers exact by
+            construction, six real photographs hand-checked (12 of 13 checked
+            answers correct, one out-of-distribution miss documented honestly).
+            Each case renders its gold annotation next to the model's
+            distribution; the request JSON is editable before sending — the
+            wire format is the same <code>POST /v1/systemone</code> everywhere.
+            Demo cases live in <code>kapteeni/demo/</code> (committed;
+            <code>scripts/make_demo.py</code> regenerates them
+            deterministically).</p>
+          <p>Measured image handling, briefly: quality is validated at
+            640&#215;640 (400 tokens); anything above a 640&#8202;px longest edge is
+            bounded to that distribution and the response carries a
+            plain-language <code>notice</code> saying small text and fine
+            detail may be lost. The full measured limits are on the
+            <a href="api.html">Wire API</a> page.</p>
+        </section>
+
         <section class="doc-section" id="replicated">
-          <h2><span class="sec-no">&#167;&#8202;3</span>What is replicated</h2>
+          <h2><span class="sec-no">&#167;&#8202;4</span>What is replicated</h2>
           <div class="table-scroll">
             <table class="data">
               <thead>
@@ -115,7 +193,7 @@
         </section>
 
         <section class="doc-section" id="design">
-          <h2><span class="sec-no">&#167;&#8202;4</span>Design decisions</h2>
+          <h2><span class="sec-no">&#167;&#8202;5</span>Design decisions</h2>
           <ol>
             <li><strong>Noul is trained absolute</strong> — a single sigmoid against
               soft targets, never a yes/no softmax pair. A complement-consistent
@@ -140,29 +218,39 @@
               passes, and the distiller never labels val rows.</li>
             <li><strong>No chat template</strong> — passes are plain text; behavior
               is template-independent and fully deterministic.</li>
+            <li><strong>The image serving policy is settled by measurement</strong> —
+              images above a 640&#8202;px longest edge are bounded to the validated
+              640&#215;640 rendering distribution, and every bounded image
+              triggers a plain-language notice on the response; no pasting or
+              cropping — letterboxing measurably flipped a boundary case
+              (WORKLOG, 2026-10-02).</li>
           </ol>
         </section>
 
         <section class="doc-section" id="quickstart">
-          <h2><span class="sec-no">&#167;&#8202;5</span>Quickstart</h2>
+          <h2><span class="sec-no">&#167;&#8202;6</span>Quickstart</h2>
           <pre><code>cd kapteeni
-python3 -m pytest                          # 90+ tests, mock model, no GPU needed
+python3 -m pytest                          # 170+ tests, mock model, no GPU needed
 
-# serve a variant (from Hugging Face, or a local distribution pack)
+# serve a text variant (from Hugging Face, or a local distribution pack)
 python3 -m kapteeni.serve --hf TriusAI/kapteeni-v1-meticulous --port 8000
-python3 -m kapteeni.serve --hf TriusAI/kapteeni-v1-intuit --port 8000
 python3 -m kapteeni.serve --dist ./kapteeni-v1-meticulous-dist --port 8000
+python3 -m kapteeni.serve --dist ./kapteeni-v1-intuit-dist --port 8000
+
+# serve the multimodal line (API takes state.image; demo site at /)
+python3 -m kapteeni.serve_v11c --hf TriusAI/kapteeni-v1.1c --port 8002
 
 curl localhost:8000/v1/systemone -d '{"state":"...","model":"jev-latest","questions":{...}}'</code></pre>
-          <p>Requests may address either variant by name, by the legacy
-            <code>kapteeni-v1</code>, or by the wire-compat alias
-            <code>jev-latest</code>; responses always report the served variant's
-            real name. The full request and answer shapes are on the
-            <a href="api.html">Wire API</a> page.</p>
+          <p>Requests on the text server may address either variant by name, by
+            the legacy <code>kapteeni-v1</code>, or by the wire-compat alias
+            <code>jev-latest</code>; the multimodal server accepts
+            <code>jev-latest</code> and <code>kapteeni-v1.1c</code>. Responses
+            always report the served line's real name. The full request and
+            answer shapes are on the <a href="api.html">Wire API</a> page.</p>
         </section>
 
         <section class="doc-section" id="layout">
-          <h2><span class="sec-no">&#167;&#8202;6</span>Repository layout</h2>
+          <h2><span class="sec-no">&#167;&#8202;7</span>Repository layout</h2>
           <ul class="modules">
             <li><span class="mod">kapteeni/contract.py</span><span class="mod-desc">the wire format as executable code — validation, answer shaping, confidence, exact-1 probability sums</span></li>
             <li><span class="mod">kapteeni/serialize.py</span><span class="mod-desc">pass serialization (state JSON text + <code>[noul]</code>/<code>[choice]</code>/<code>[score]</code> suffixes; ids never serialized)</span></li>
@@ -170,17 +258,19 @@ curl localhost:8000/v1/systemone -d '{"state":"...","model":"jev-latest","questi
             <li><span class="mod">kapteeni/heads.py · train.py</span><span class="mod-desc">per-primitive readout heads, proper-scoring losses (BCE/CE, soft targets), per-head temperature fit</span></li>
             <li><span class="mod">kapteeni/build_data.py · criteria.py · distill.py</span><span class="mod-desc">datasets &#8594; rows &#8594; passes; teacher-written rubrics; k-sample soft labels</span></li>
             <li><span class="mod">kapteeni/verbalizer.py</span><span class="mod-desc">the backbone's native decision readout, blended with the trained heads</span></li>
-            <li><span class="mod">kapteeni/model.py · serve.py</span><span class="mod-desc">runtime model + stdlib HTTP server</span></li>
+            <li><span class="mod">kapteeni/model.py · serve.py</span><span class="mod-desc">text-line runtime model + stdlib HTTP server</span></li>
+            <li><span class="mod">kapteeni/model_v11c.py · serve_v11c.py</span><span class="mod-desc">multimodal runtime + server: <code>state.image</code>, same-origin demo site at <code>/</code>, exact-E1 per-question forwards</span></li>
+            <li><span class="mod">kapteeni/pack.py · pack_v11c.py</span><span class="mod-desc">build the self-contained distribution packs — merged model, heads, serving constants, model card (+ demo website for v1.1c)</span></li>
             <li><span class="mod">kapteeni/committee.py</span><span class="mod-desc">output-averaging of two served variants (<code>kapteeni-v1-committee</code>)</span></li>
             <li><span class="mod">kapteeni/p2_finalize.py</span><span class="mod-desc">fits final temperatures and blend constants; emits a servable bundle</span></li>
-            <li><span class="mod">kapteeni/pack.py</span><span class="mod-desc">builds self-contained distribution packs — merged model, heads, serving constants, variant-specific model card</span></li>
+            <li><span class="mod">kapteeni/demo/</span><span class="mod-desc">demo cases + images, committed; <code>scripts/make_demo.py</code> regenerates them deterministically from the generators</span></li>
             <li><span class="mod">tests/</span><span class="mod-desc">E1 (parity), E5 (asymmetry), E6 (score semantics), E11 (schema, end-to-end over HTTP); the suites run against the mock by default and against the trained model via <code>KAPTEENI_TEST_BUNDLE=</code></span></li>
-            <li><span class="mod"><span class="dim">remaining modules</span></span><span class="mod-desc"><span class="dim">data synthesis and experiment harnesses (synth, synth2, soup, familyval, fit_diverse, evalx, report, metrics, mock, ollama) — see <a href="https://github.com/TriusAI/Kapteeni/blob/main/WORKLOG.md">WORKLOG.md</a></span></span></li>
+            <li><span class="mod"><span class="dim">remaining modules</span></span><span class="mod-desc"><span class="dim">data synthesis and experiment harnesses (synth, synth2(+zh), synth3(+families/zh/gfx), train_v11*, soup, familyval, fit_diverse, evalx, report, metrics, mock, ollama) — see <a href="https://github.com/TriusAI/Kapteeni/blob/main/WORKLOG.md">WORKLOG.md</a></span></span></li>
           </ul>
         </section>
 
         <section class="doc-section" id="license">
-          <h2><span class="sec-no">&#167;&#8202;7</span>License</h2>
+          <h2><span class="sec-no">&#167;&#8202;8</span>License</h2>
           <ul>
             <li><strong>Code, docs, generators:</strong> Apache-2.0
               (<a href="https://github.com/TriusAI/Kapteeni/blob/main/LICENSE">LICENSE</a>)

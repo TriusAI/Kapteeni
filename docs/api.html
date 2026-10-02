@@ -34,7 +34,10 @@
             docs.typesafe.ai/api; the reference's example requests run unchanged
             against this server (test E11). The HTTP layer is Python stdlib
             only; the format itself lives in <code>kapteeni/contract.py</code> —
-            deliberately framework-free and torch-free.</p>
+            deliberately framework-free and torch-free. The multimodal server
+            (<code>kapteeni.serve_v11c</code>) serves the same contract with the
+            optional <code>state.image</code> field added, and ships the demo
+            website at its own root.</p>
         </section>
 
         <img class="ramp" src="assets/ramp.png" alt="" aria-hidden="true">
@@ -50,7 +53,13 @@
             <div class="spec-row">
               <span class="spec-term">GET /v1/models</span>
               <span class="spec-desc">Model cards: the <code>jev-latest</code> alias
-                plus a card for the served variant.</span>
+                plus a card for the served line.</span>
+            </div>
+            <div class="spec-row">
+              <span class="spec-term">GET / &amp; GET /demo/*</span>
+              <span class="spec-desc">The multimodal server (<code>serve_v11c</code>)
+                additionally serves its self-contained demo website from the
+                same origin — no CORS setup; same protocol as the wire.</span>
             </div>
           </div>
           <p>Authentication is optional: set <code>KAPTEENI_API_KEY</code> to require
@@ -84,6 +93,12 @@
                 <code>ticket.messages[0].text</code>).</span>
             </div>
             <div class="spec-row">
+              <span class="spec-term">state.image</span>
+              <span class="spec-desc">optional, on the multimodal server only:
+                base64 PNG/JPEG, one image per request, at most 8 MiB decoded
+                bytes (larger &#8594; HTTP 422). Measured limits below.</span>
+            </div>
+            <div class="spec-row">
               <span class="spec-term">model <span class="req">required</span></span>
               <span class="spec-desc">string. Accepted names: <code>jev-latest</code>
                 (alias, wire compat), <code>kapteeni-v1</code> (legacy name for
@@ -91,7 +106,8 @@
                 <code>kapteeni-v1-intuit</code>, <code>kapteeni-v1-committee</code>.
                 Any of them routes to the variant the server was launched with;
                 the response's <code>model</code> field always reports the served
-                variant's real name.</span>
+                variant's real name. On the multimodal server:
+                <code>jev-latest</code> and <code>kapteeni-v1.1c</code>.</span>
             </div>
             <div class="spec-row">
               <span class="spec-term">questions <span class="req">required</span></span>
@@ -100,6 +116,22 @@
                 content-only, so adding or removing a question never changes
                 another answer (E1).</span>
             </div>
+          </div>
+          <h3>state.image — measured limits (v1.1c, probed 2026-10-02)</h3>
+          <div class="table-scroll">
+            <table class="data">
+              <thead>
+                <tr><th>Limit</th><th>Value &amp; behavior</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Wire format</td><td>base64 PNG/JPEG, one image per request; text-only requests are unchanged.</td></tr>
+                <tr><td>Size cap</td><td>8 MiB decoded bytes; larger &#8594; HTTP 422.</td></tr>
+                <tr><td>Pixel budget</td><td>the Qwen3.5 processor downscales above ~16.78 MP to its pixel budget — up to ~16,300 vision tokens per image (tokens &#8776; pixels/1024; each covers a 32&#215;32 px merged patch).</td></tr>
+                <tr><td>Validated distribution</td><td>quality validated at 640&#215;640 (400 tokens) — larger resolutions are accepted but out-of-distribution, and per-question latency scales roughly linearly with pixels (a 6-option choice on a 12 MP photo is ~70k vision tokens of forward).</td></tr>
+                <tr><td>Bounding notice</td><td>any image above 640&#8202;px longest edge is bounded, and the response carries a plain-language <code>notice</code>: small text and fine detail may become unreadable, and accuracy may differ from the full-resolution result — precision-critical callers should pre-resize or crop to the region of interest. The demo page carries the same notice next to its attach control.</td></tr>
+                <tr><td>Usage accounting</td><td><code>usage.input_tokens</code> counts the real image tokens (<code>kapteeni.model_v11c.vision_tokens</code>, anchored to the measured grids; the 400-token image block is disclosed in the bench request).</td></tr>
+              </tbody>
+            </table>
           </div>
         </section>
 
@@ -211,7 +243,11 @@
             1 &#8722; H(p)/ln K, floored at 0 (a documented divergence, asserted by
             the test suite). Run-to-run behavior is fully deterministic — a
             documented improvement over the reference's std &#8776; 0.01; ensemble
-            noise is a future flag.</p>
+            noise is a future flag. The multimodal line is no different: each
+            question is forwarded on its own with the image re-attached where
+            present (exact-E1 per-question forwards), which also costs
+            ~4&#8211;7 s per image question against ~0.2 s for a text-only
+            pass.</p>
         </section>
 
         <section class="doc-section" id="serving">
@@ -219,6 +255,10 @@
           <pre><code># packaged distribution (merged model + heads + constants; no local artifacts)
 python3 -m kapteeni.serve --dist ./kapteeni-v1-meticulous-dist --port 8000
 python3 -m kapteeni.serve --hf TriusAI/kapteeni-v1-intuit --port 8000
+
+# multimodal line: API takes state.image; self-contained demo site at /
+python3 -m kapteeni.serve_v11c --dist ./kapteeni-v1.1c-dist --port 8002
+python3 -m kapteeni.serve_v11c --hf TriusAI/kapteeni-v1.1c --port 8002
 
 # from local training artifacts
 python3 -m kapteeni.serve --bundle model_cache/kapteeni_v1.pt \
@@ -228,7 +268,7 @@ python3 -m kapteeni.serve --bundle model_cache/kapteeni_v1.pt \
 python3 -m kapteeni.serve --dist ./kapteeni-v1-meticulous-dist \
     --dist2 ./kapteeni-v1-intuit-dist --committee --port 8000
 
-# mock model: no GPU, full wire contract
+# mock model: no GPU, full wire contract (text server; add --mock for the v1.1c dry-run)
 python3 -m kapteeni.serve --port 8000</code></pre>
           <div class="table-scroll">
             <table class="data">
@@ -243,6 +283,8 @@ python3 -m kapteeni.serve --port 8000</code></pre>
                 <tr><td><code>--committee</code></td><td>ensemble with a second model (<code>--bundle2/--lora2/--fit2</code> or <code>--dist2</code>) by output-averaging</td></tr>
                 <tr><td><code>--served-as</code></td><td>name reported in responses and <code>/v1/models</code> (default: the dist's config, else <code>kapteeni-v1</code>)</td></tr>
                 <tr><td><code>--host</code> / <code>--port</code></td><td>bind address (default <code>127.0.0.1:8000</code>)</td></tr>
+                <tr><td><code>--mock</code></td><td>(<code>serve_v11c</code>) interface + demo dry-run without a GPU</td></tr>
+                <tr><td><code>--warmup</code> / <code>--no-warmup</code></td><td>(<code>serve_v11c</code>, default on) pre-run one forward per demo image size at startup (~9 s), amortizing the per-shape searches out of first requests</td></tr>
               </tbody>
             </table>
           </div>
