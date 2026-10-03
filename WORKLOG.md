@@ -983,3 +983,38 @@ application, store roundtrips, endpoint happy/sad paths).
 - Known follow-ups: site manual pages for FORGE/FEEDBACK (docs/*.html
   not yet updated); full v11c-rebuild run unclaimed; HF package sync
   still blocked on a write token for this box.
+
+## 2026-10-04 — ollama port, phase 0 complete (fixtures captured)
+
+Local ollama upgraded 0.34.3 -> 0.35.1 (manual release download; the
+install script's asset name is stale — the tarball is now .tar.zst).
+A user-level debug server (port 11435, OLLAMA_DEBUG=1, own models
+dir; the systemd service on 11434 untouched) captured live fixtures
+from tev1:0.8b (812 MB; the 4.5 GB tev1 default continues downloading
+— the registry caps ~1 MB/s and parallel pulls starve each other).
+
+Phase 0 verdict (docs/OLLAMA-PROMPT-SPEC.md §6): the runner-source
+analysis held everywhere it was tested. The notable fixture findings:
+- tev1's Modelfile: TEMPLATE {{ .Prompt }}, an injection-resistant
+  SYSTEM preamble, CAPABILITY decision — but systemone rendering
+  IGNORES the Modelfile template and renders through the GGUF's
+  embedded chat template (Qwen3.5 ChatML, system message = the
+  Modelfile SYSTEM, assistant prefix with thinking disabled). Port
+  rule recorded: train against exactly this render; verify by token
+  counts through the runtime.
+- usage semantics verified live: output_tokens = primer + questions
+  (observed 3 = 1 + 2); input_tokens recounts the shared context per
+  question (405 for two ~200-token rows); the second row resumed from
+  the shared-prefix checkpoint — the hybrid-recurrent primer working
+  as the source documents.
+- tev1:0.8b is a Qwen3.5-0.8B fine-tune (arch qwen35, SSM hybrid)
+  scoring fine through the pinned llama-server on ROCm — live proof
+  of the conversion path the v1.1c port needs. Q8_0, 763 MiB.
+- The score answer is the exact probability-weighted expectation of
+  level indices (fixture arithmetic checks to the digit).
+
+Next: the Phase 1 pre-registration (v1-meticulous port first:
+letter-format distillation from the published v1-meticulous teacher,
+Qwen3-4B backbone, gates measured through the ollama runtime), then
+the training run. ollama_format.py (committed earlier today with 13
+byte-exactness tests) already renders the training-side prompts.
