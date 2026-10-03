@@ -23,10 +23,17 @@ teacher's answers as letter logits.
   artifact of record for this port; its HF pin lives in that model's
   own card). Base model Qwen/Qwen3-4B-Instruct-2507, merged model
   + heads + fitted constants.
-- **Student**: the SAME base (Qwen3-4B-Instruct-2507, local cache),
-  LoRA r=32 alpha 64 targets q/k/v/o/gate/up/down (the v1.1c recipe),
-  lr 1e-4, 1 epoch, token budget 4096, seed 0, bf16, gradient
-  checkpointing — the proven stable config on this box.
+- **Student**: starts from the teacher's own merged backbone
+  (`kapteeni-v1-meticulous-dist/model.safetensors` — Qwen3-4B-
+  Instruct-2507 with the v1 LoRA already fused; no plain base is
+  cached locally and re-downloading one would only discard the
+  teacher's learned representations). AMENDED 2026-10-04 before any
+  measurement: the original text said "the same base (Qwen3-4B-
+  Instruct-2507, local cache)"; the fused-teacher start is the
+  strictly-closer initialization and this is the documented reason.
+  New LoRA r=32 alpha 64 targets q/k/v/o/gate/up/down (the v1.1c
+  recipe), lr 1e-4, 1 epoch, token budget 4096, seed 0, bf16,
+  gradient checkpointing — the proven stable config on this box.
 
 ## Data (behavior distillation; gold labels are NOT the target)
 
