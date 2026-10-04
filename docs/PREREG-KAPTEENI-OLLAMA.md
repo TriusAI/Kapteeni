@@ -236,3 +236,53 @@ checkpointing disabled. Run 1 peaked at 11 GB of the box's 96 GB —
 the conservative recompute was pure speed loss (~2x). Identical
 learning recipe otherwise; this is an engineering amendment, not a
 recipe change to the loss, data, or gates.
+
+## Run-2 Outcome (2026-10-05, ~00:50) — NEGATIVE again: program PARKS
+
+One run (3,356 steps, ~6h wall with the no-recompute fast config).
+Gates through the actual ollama runtime on kapteeni-ollama-port-r2
+(F16 GGUF):
+
+| gate | Run 1 | Run 2 | bar | verdict |
+|---|---|---|---|---|
+| banking77 agree / TV | 0.963 / 0.053 | 0.947 / 0.083 | 0.90 / 0.15 | PASS |
+| boolq agree / dp | 0.902 / 0.101 | **0.932 / 0.091** | 0.90 / 0.10 | PASS (new) |
+| clinc150 agree / TV | 0.973 / 0.038 | 0.990 / 0.032 | 0.90 / 0.15 | PASS |
+| fever agree / dp | 0.899 / 0.106 | **0.949 / 0.059** | 0.90 / 0.10 | PASS (new) |
+| synth agree / dp | 0.938 / 0.162 | 0.940 / **0.171** | 0.90 / 0.10 | agree PASS, dp FAIL |
+| synth2 agree / dp / TV | 0.883 / 0.154 / 0.265 | **0.900** / 0.217 / 0.279 | 0.90 / 0.10 / 0.15 | agreement AT the bar (0.8998), shape FAIL |
+| goemotions agree / TV | 0.788 / 0.288 | **0.836** / 0.257 | 0.90 / 0.15 | FAIL |
+| helpsteer2 agree / TV | 0.765 / 0.202 | **0.784** / 0.229 | 0.90 / 0.15 | FAIL |
+| synth2-EN gold floor | 0.652 | 0.655 | 0.85 | FAIL |
+| MNLI floor | 0.847 | **0.873** | 0.80 | PASS |
+| pooled ECE | 0.038 | **0.018** | 0.10 | PASS |
+| outrank errors | 0 | 0 | 0 | PASS |
+
+The rebalance WORKED for the mid-tier (boolq and fever now pass
+cleanly; synth2 agreement rose to the bar itself) but did not move
+the two hard sources' shape fidelity (goemotions/helpsteer2 TV ~0.23-
+0.26) or the synth2 quality floor. Per the frozen Run-2 decision
+rule: two runs, two negatives — **the letter-distillation recipe as
+designed does not reach "roughly the same"; the port program
+parks.**
+
+The negative carries a sharp diagnosis for any future mechanism:
+top-pick agreement is now broadly healthy (0.90-0.99 on six of eight
+sources), and the port's own calibration is excellent (ECE 0.018)
+— what fails is DISTRIBUTION SHAPE vs the teacher, concentrated
+exactly where the teacher's served output is most aggressively
+shaped (the meticulous variant's conservative contract shaping). The
+0.5-weight hard-CE term is the likely shape-distorter: it forces
+mass onto the argmax letter, making the port peakier than the
+teacher wherever the teacher is deliberately flat. A future Run-3
+mechanism would be: hard-CE as a small auxiliary (weight ~0.1,
+enough for the outrank property) with the soft term dominating —
+pre-registered separately, with the same bars. The synth2 gold floor
+(0.655) is the letter paradigm's rule-skill ceiling again; no
+distillation recipe moves it, and the plan already records the
+Clef-span-head format as the only native path around that ceiling.
+
+Artifacts kept: model_cache/kapteeni_ollama_r2 (+ merged dir, GGUF),
+kapteeni-ollama-port-r2 in the local ollama, gates.json (Run-2
+reading). The original v1-meticulous remains the reference artifact
+on HF; nothing was published.

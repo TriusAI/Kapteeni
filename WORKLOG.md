@@ -1042,3 +1042,19 @@ outrank failures, render byte-exact), banking77/clinc150 near-perfect
 mimicry (0.96-0.97), MNLI 0.847, pooled ECE 0.038. No publish; the
 experimental path is not available (multiple gates, far from bars).
 Details in PREREG-KAPTEENI-OLLAMA.md Outcome.
+
+## 2026-10-05 — ollama port run 2: NEGATIVE; program parked per the rule
+
+Run 2 (rebalanced distillation: weak sources x3, cuts to strong,
+1,788 fresh synth2 lessons, fast config 8192-budget no-recompute —
+3,356 steps in ~6h vs run 1's 10h) improved fidelity broadly: boolq
+(0.902->0.932) and fever (0.899->0.949) now PASS their bars,
+synth2 agreement hit the bar (0.8998), goemotions +0.05, helpsteer2
++0.02, MNLI 0.847->0.873, ECE 0.038->0.018. But goemotions/helpsteer2
+distribution shapes stayed far from the teacher (TV 0.23-0.26 vs bar
+0.15) and the synth2 gold floor didn't move (0.655 vs 0.85). Two
+runs, two negatives -> parked, as pre-registered. Diagnosis for any
+Run 3: the 0.5-weight hard-CE term peaks the port's distributions
+where the teacher's shaped output is deliberately flat — a soft-
+dominant loss (hard term as small outrank auxiliary) is the next
+mechanism candidate, pre-registered separately if ever attempted.
