@@ -28,6 +28,11 @@ import torch.nn.functional as F
 
 TEACHER_DIST = "../kapteeni-v1-meticulous-dist"
 LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+# Run-2 recipe (PREREG-KAPTEENI-OLLAMA.md, frozen before the run):
+# cuts are deterministic (row_id-sorted first-N of the non-val
+# lessons); oversample replicates lessons within the single epoch.
+CUTS = {"banking77": 600, "clinc150": 1000, "synth": 2500}
+REBALANCE = {"goemotions": 3, "helpsteer2": 3, "fever": 2, "boolq": 2}
 
 
 def load_examples(data_dir: str, train_only: bool = True) -> list[dict]:
@@ -44,6 +49,23 @@ def load_examples(data_dir: str, train_only: bool = True) -> list[dict]:
             if train_only and r["is_val"]:
                 continue
             out.append(r)
+    return out
+
+
+def load_train(data_dir: str, extra_dir: str = "") -> list[dict]:
+    """Non-val lessons from the main dir + optional extra dir,
+    rebalanced per the frozen Run-2 recipe."""
+    rows = load_examples(data_dir, train_only=True)
+    if extra_dir:
+        rows += load_examples(extra_dir, train_only=True)
+    by_src: dict[str, list[dict]] = {}
+    for r in rows:
+        by_src.setdefault(r["source"], []).append(r)
+    out: list[dict] = []
+    for src, rs in sorted(by_src.items()):
+        if src in CUTS:
+            rs = sorted(rs, key=lambda r: r["row_id"])[: CUTS[src]]
+        out += rs * REBALANCE.get(src, 1)
     return out
 
 
@@ -67,6 +89,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", default="model_cache/kapteeni_ollama")
     ap.add_argument("--base", default=TEACHER_DIST)
     ap.add_argument("--data", default="data_cache/ollama_port")
+    ap.add_argument("--extra-data", default="",
+                    help="extra lessons dir (Run-2 fresh synth2x)")
     ap.add_argument("--device", default="cuda")
     ap.add_argument("--lr", type=float, default=1e-4)
     ap.add_argument("--token-budget", type=int, default=4096)
@@ -75,6 +99,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--gate-every", type=int, default=300)
     ap.add_argument("--ckpt-every", type=int, default=150)
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--no-ckpt", action="store_true",
+                    help="disable gradient checkpointing (fast config: "
+                    "the 96G box fits the 4B text model at budget 8192 "
+                    "without recompute)")
     args = ap.parse_args(argv)
 
     from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -99,6 +127,12 @@ def main(argv: list[str] | None = None) -> int:
         step = 0
     model.gradient_checkpointing_enable()
     model.enable_input_require_grads()
+    if args.no_ckpt:
+        # unwrap to the base transformer and disable recompute
+        target = model.base_model.model if hasattr(
+            model, "base_model") else model
+        if hasattr(target, "gradient_checkpointing_disable"):
+            target.gradient_checkpointing_disable()
     model.train()
     n_train = sum(p.numel() for p in model.parameters()
                   if p.requires_grad)
@@ -119,12 +153,24 @@ def main(argv: list[str] | None = None) -> int:
         letter_ids.append(ids[0])
     letter_ids_t = torch.tensor(letter_ids, device=args.device)
 
-    train = load_examples(args.data, train_only=True)
+    train = load_train(args.data, args.extra_data)
     if args.limit:
         train = train[: args.limit]
-    val = load_examples(args.data, train_only=False)
-    val = [r for r in val if r["is_val"]][:200]
-    print(f"train: {len(train)} | val monitor: {len(val)}", flush=True)
+    # per-source val slices (Run 1's process fix: monitor every
+    # source, 40 val rows each, not a biased global slice)
+    val_by_src: dict[str, list[dict]] = {}
+    for r in load_examples(args.data, train_only=False):
+        if r["is_val"]:
+            val_by_src.setdefault(r["source"], [])
+            if len(val_by_src[r["source"]]) < 40:
+                val_by_src[r["source"]].append(r)
+    val = [r for rs in val_by_src.values() for r in rs]
+    print(f"train: {len(train)} (rebalanced) | "
+          f"val monitor: {len(val)} across {len(val_by_src)} sources",
+          flush=True)
+    from collections import Counter
+    print("  per-source:", dict(Counter(r["source"] for r in train)),
+          flush=True)
 
     lengths = [len(tok(r["prompt"], add_special_tokens=False)
                    ["input_ids"]) + 2 for r in train]
@@ -160,28 +206,32 @@ def main(argv: list[str] | None = None) -> int:
         b = len(rows)
         return 0.5 * soft_loss / b + 0.5 * hard_loss / b
 
-    def monitor() -> float:
-        """argmax-letter agreement with the teacher on the val slice."""
+    def monitor() -> dict:
+        """Per-source argmax-letter agreement with the teacher."""
         model.eval()
-        agree = n = 0
+        agree = {s: 0 for s in val_by_src}
+        n = {s: 0 for s in val_by_src}
         with torch.no_grad():
-            for i in range(0, len(val), 8):
-                rows = val[i:i + 8]
-                enc, lens = encode(rows)
-                inputs = {k: v.to(args.device) for k, v in enc.items()}
-                logits = model(**inputs).logits
-                idx = (lens - 1).to(args.device)
-                for bi, r in enumerate(rows):
-                    k = len(r["candidates"])
-                    lids = letter_ids_t[:k]
-                    pred = logits[torch.arange(len(rows),
-                                  device=args.device)[bi], idx[bi]][lids]
-                    t = torch.tensor(r["target_probs"],
-                                     device=args.device)
-                    agree += int(pred.argmax() == t.argmax())
-                    n += 1
+            for src, rows in val_by_src.items():
+                for i in range(0, len(rows), 8):
+                    chunk = rows[i:i + 8]
+                    enc, lens = encode(chunk)
+                    inputs = {k: v.to(args.device)
+                              for k, v in enc.items()}
+                    logits = model(**inputs).logits
+                    idx = (lens - 1).to(args.device)
+                    for bi, r in enumerate(chunk):
+                        k = len(r["candidates"])
+                        lids = letter_ids_t[:k]
+                        pred = logits[torch.arange(
+                            len(chunk), device=args.device)[bi],
+                            idx[bi]][lids]
+                        t = torch.tensor(r["target_probs"],
+                                         device=args.device)
+                        agree[src] += int(pred.argmax() == t.argmax())
+                        n[src] += 1
         model.train()
-        return agree / max(n, 1)
+        return {s: agree[s] / max(n[s], 1) for s in agree}
 
     base_step = step
     t0 = time.time()
@@ -206,8 +256,10 @@ def main(argv: list[str] | None = None) -> int:
                       f"(peak {mem:.1f}G)", flush=True)
                 torch.cuda.reset_peak_memory_stats()
             if step % args.gate_every == 0:
-                print(f"  [monitor {step}] teacher-agreement "
-                      f"{monitor():.4f}", flush=True)
+                m = monitor()
+                print(f"  [monitor {step}] " + " ".join(
+                    f"{s[:6]}={v:.3f}" for s, v in sorted(m.items())),
+                    flush=True)
             if step % args.ckpt_every == 0:
                 model.save_pretrained(str(ckpt / "adapter"))
                 torch.save(opt.state_dict(), ckpt / "opt.pt")

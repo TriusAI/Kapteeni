@@ -229,3 +229,10 @@ same"; any further attempt requires a genuinely new mechanism
 (pre-registered separately), and the honest fallback for users who
 want Ollama access remains a documented experimental artifact only
 with explicit owner approval, which the current bars do NOT meet.
+
+**Run-2 amendment (2026-10-04, before the run started):** token budget
+4096 -> 8192 (the v1 P2's own proven setting) and gradient
+checkpointing disabled. Run 1 peaked at 11 GB of the box's 96 GB —
+the conservative recompute was pure speed loss (~2x). Identical
+learning recipe otherwise; this is an engineering amendment, not a
+recipe change to the loss, data, or gates.

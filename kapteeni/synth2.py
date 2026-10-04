@@ -892,6 +892,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", default="")
     ap.add_argument("--criteria-out", default="")
     ap.add_argument("--seed", type=int, default=23)
+    ap.add_argument("--prefix", default="synth2",
+                    help="row_id prefix (fresh-data runs use a distinct "
+                    "prefix so ids never collide with the original rows)")
     args = ap.parse_args(argv)
 
     if args.cmd == "selfcheck":
@@ -913,7 +916,7 @@ def main(argv: list[str] | None = None) -> int:
                 rows.append(out)
                 produced += 1
     for i, r in enumerate(rows):
-        r["row_id"] = f"synth2-{i:05d}"
+        r["row_id"] = f"{args.prefix}-{i:05d}"
         # choice rows carry the option INDEX (build_data contract), but the
         # generators reason in option names — map here, once, centrally.
         if r["primitive"] == "choice":

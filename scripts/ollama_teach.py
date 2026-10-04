@@ -34,7 +34,8 @@ SOURCES = ("boolq", "fever", "synth", "synth2", "banking77",
 CRIT = {"banking77": "data_cache/crit_banking77.json",
         "clinc150": "data_cache/crit_clinc150.json",
         "goemotions": "data_cache/crit_goemotions.json",
-        "helpsteer2": "data_cache/crit_helpsteer2.json"}
+        "helpsteer2": "data_cache/crit_helpsteer2.json",
+        "synth2": "data_cache/synth2_criteria.json"}
 MODEL = "kapteeni-v1-meticulous"
 MAX_OPTS = 24  # the v1 training convention; fits the 26-letter cap
 _RNG = random.Random(7)  # deterministic subsets, expand_passes' seed
@@ -64,9 +65,11 @@ def row_question(row: dict, crit: dict) -> dict | None:
         return {"type": "choice", "instructions": row["instructions"],
                 "criteria": {n: (crit.get(n) or n) for n in names}}
     if qt == "score":
-        levels = crit[row["meta"]["attribute"]]
+        attr = row["meta"]["attribute"]
+        if attr not in crit:
+            return None  # no levels for this attribute: skip the row
         return {"type": "score", "instructions": row["instructions"],
-                "criteria": levels}
+                "criteria": crit[attr]}
     return None
 
 
@@ -96,9 +99,22 @@ def main(argv=None) -> int:
     ap.add_argument("--sources", nargs="+", default=list(SOURCES))
     ap.add_argument("--limit", type=int, default=0,
                     help="rows per source (smoke)")
+    ap.add_argument("--rows-file", default="",
+                    help="teach ONE specific rows file (with --tag)")
+    ap.add_argument("--tag", default="",
+                    help="source tag for --rows-file output")
+    ap.add_argument("--crit-file", default="",
+                    help="criteria json for --rows-file score/choice rows")
     args = ap.parse_args(argv)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
+
+    if args.rows_file:
+        work = [(args.tag or Path(args.rows_file).stem,
+                 args.rows_file, args.crit_file or {})]
+    else:
+        work = [(src, f"data_cache/rows_{src}.jsonl",
+                 CRIT.get(src, {})) for src in args.sources]
 
     # the render half needs the base's chat template; the dist ships it
     from transformers import AutoTokenizer
@@ -116,10 +132,9 @@ def main(argv=None) -> int:
             add_generation_prompt=True, tokenize=False)
 
     n_rows = n_out = 0
-    for src in args.sources:
-        crit = json.loads(open(CRIT[src]).read()) if src in CRIT else {}
-        rows = [json.loads(l) for l in open(
-            f"data_cache/rows_{src}.jsonl", encoding="utf-8")]
+    for src, rows_path, crit_path in work:
+        crit = json.loads(open(crit_path).read()) if crit_path else {}
+        rows = [json.loads(l) for l in open(rows_path, encoding="utf-8")]
         if args.limit:
             rows = rows[: args.limit]
         done_ids = set()
