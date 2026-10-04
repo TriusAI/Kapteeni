@@ -99,6 +99,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--gate-every", type=int, default=300)
     ap.add_argument("--ckpt-every", type=int, default=150)
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--hard-weight", type=float, default=0.5,
+                    help="loss weight of the hard argmax-CE term (the "
+                    "outrank auxiliary); the rest is the soft "
+                    "teacher-distribution CE. Run-2's diagnosed value "
+                    "for shape fidelity: 0.1")
     ap.add_argument("--no-ckpt", action="store_true",
                     help="disable gradient checkpointing (fast config: "
                     "the 96G box fits the 4B text model at budget 8192 "
@@ -204,7 +209,8 @@ def main(argv: list[str] | None = None) -> int:
             soft_loss = s if soft_loss is None else soft_loss + s
             hard_loss = hard if hard_loss is None else hard_loss + hard
         b = len(rows)
-        return 0.5 * soft_loss / b + 0.5 * hard_loss / b
+        hw = args.hard_weight  # closure over main()'s args
+        return ((1 - hw) * soft_loss + hw * hard_loss) / b
 
     def monitor() -> dict:
         """Per-source argmax-letter agreement with the teacher."""

@@ -37,6 +37,7 @@ CRIT = {"banking77": "data_cache/crit_banking77.json",
         "helpsteer2": "data_cache/crit_helpsteer2.json",
         "synth2": "data_cache/synth2_criteria.json"}
 MODEL = "kapteeni-v1-meticulous"
+TEACHER_MODEL = MODEL
 MAX_OPTS = 24  # the v1 training convention; fits the 26-letter cap
 _RNG = random.Random(7)  # deterministic subsets, expand_passes' seed
 
@@ -74,7 +75,8 @@ def row_question(row: dict, crit: dict) -> dict | None:
 
 
 def ask_teacher(port: int, row: dict, q: dict) -> dict:
-    body = json.dumps({"model": MODEL, "state": row["state"],
+    global TEACHER_MODEL
+    body = json.dumps({"model": TEACHER_MODEL, "state": row["state"],
                        "questions": {"q": q}}).encode()
     req = urllib.request.Request(
         f"http://127.0.0.1:{port}/v1/systemone", data=body,
@@ -105,10 +107,15 @@ def main(argv=None) -> int:
                     help="source tag for --rows-file output")
     ap.add_argument("--crit-file", default="",
                     help="criteria json for --rows-file score/choice rows")
+    ap.add_argument("--model", default=MODEL,
+                    help="teacher model name on the wire (the dist being "
+                    "served)")
     args = ap.parse_args(argv)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
+    global TEACHER_MODEL
+    TEACHER_MODEL = args.model
     if args.rows_file:
         work = [(args.tag or Path(args.rows_file).stem,
                  args.rows_file, args.crit_file or {})]
