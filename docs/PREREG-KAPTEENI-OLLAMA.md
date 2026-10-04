@@ -106,3 +106,67 @@ documented. The v1-intuit port (next, same machinery, different
 teacher) and the v1.1c text-only port (after) inherit this document
 by reference with their own teacher fidelity bars frozen in their
 own pre-registered rows before their runs.
+## Outcome (2026-10-04) — NEGATIVE: no ship
+
+One run (4,407 steps, 21,256 teacher lessons). Gates measured through
+the actual ollama runtime (/v1/systemone) on the F16 GGUF artifact
+(model kapteeni-ollama-port). Both the first measurement (whose
+harness had an instrument bug: ASCII-escaped wire JSON shifted inputs
+on ~29% of synth2 / 14% of goemotions val rows — object states pass
+through json.Compact undecoded) and the corrected re-measurement
+(raw UTF-8 wire, the documented client convention) are recorded; the
+correction moved the numbers by <0.01 and changes nothing.
+
+Corrected readings vs frozen bars:
+
+| gate | measured | bar | verdict |
+|---|---|---|---|
+| runtime pre-flight + outrank | 0 errors | 0 | PASS |
+| fidelity banking77 | 0.963 / TV 0.053 | 0.90 / 0.15 | PASS |
+| fidelity clinc150 | 0.973 / TV 0.038 | 0.90 / 0.15 | PASS |
+| fidelity synth | 0.938 / dp 0.162 | 0.90 / 0.10 | agreement PASS, dp FAIL |
+| fidelity boolq | 0.902 / dp 0.101 | 0.90 / 0.10 | borderline dp FAIL |
+| fidelity fever | 0.899 / dp 0.106 | 0.90 / 0.10 | FAIL both |
+| fidelity synth2 | 0.883 / dp 0.154 / TV 0.265 | 0.90 / 0.10 / 0.15 | FAIL |
+| fidelity goemotions | 0.788 / TV 0.288 | 0.90 / 0.15 | FAIL |
+| fidelity helpsteer2 | 0.765 / TV 0.202 | 0.90 / 0.15 | FAIL |
+| synth2-EN val floor | 0.652 | 0.85 | FAIL |
+| MNLI floor | 0.847 | 0.80 | PASS |
+| pooled ECE | 0.038 | 0.10 | PASS |
+
+Multiple gates fail, several far from their bars (synth2 floor −0.20,
+goemotions agreement −0.11, TV −0.14): the experimental-label path
+(single gate within 0.02 with owner approval) does not apply. Per the
+decision rule: no publish as kapteeni-v1-meticulous.
+
+What the negative establishes:
+
+1. The PORT MACHINERY WORKS END TO END: the artifact loads, scores
+   through the real runtime with ZERO outrank failures, the
+   render path matched training byte-for-byte where the harness was
+   correct, and pooled ECE 0.038 is excellent — the copy is
+   well-calibrated where it lands.
+2. The shortfall is SOURCE-SPECIFIC BEHAVIOR GENERALIZATION:
+   near-perfect mimicry on banking77/clinc150 (0.96-0.97), solid on
+   synth/boolq/fever (~0.90-0.94), and material fidelity loss on
+   goemotions (0.79), helpsteer2 (0.76), synth2 (0.88, TV 0.27) —
+   the copy reproduces the teacher's train-row behavior but does not
+   fully transfer it to unseen states on the harder sources. The
+   synth2 rule-skill floor (0.652 vs the teacher's ~0.95) re-
+   confirms the letter paradigm's generalization ceiling documented
+   across v1.1/v1.1b — distillation softens it but does not remove
+   it.
+3. PROCESS LESSON (recorded): the in-loop monitor (first-200 val
+   examples, alphabetically mostly banking/boolq/clinc — the easy
+   sources) read 0.97 at the end of training and masked the weak
+   sources. Future distillation runs monitor per-source slices.
+
+The artifact (model_cache/kapteeni_ollama, merged GGUF,
+kapteeni-ollama-port in the local ollama) is kept for inspection.
+A NEW pre-registration is required for any retry; candidate
+directions informed by this negative: per-source volume rebalancing
+(weak sources up), 2-3 epochs (distillation targets, unlike hard
+labels, do not memorize destructively), per-source in-loop
+monitors, and possibly a committee of per-domain adapters. The
+v1-intuit and v1.1c ports inherit the finding that the machinery
+works and the fidelity bar is the hard part.

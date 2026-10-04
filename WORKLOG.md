@@ -1018,3 +1018,27 @@ letter-format distillation from the published v1-meticulous teacher,
 Qwen3-4B backbone, gates measured through the ollama runtime), then
 the training run. ollama_format.py (committed earlier today with 13
 byte-exactness tests) already renders the training-side prompts.
+
+## 2026-10-04 — ollama port of v1-meticulous: NEGATIVE (no ship)
+
+The full pipeline ran end to end in one day: 23,600 teacher lessons
+(v1-meticulous served as its own teacher) -> 4,407-step distillation
+-> merged -> GGUF (llama.cpp converter; ollama 0.35's own safetensors
+import needs the MLX runtime, which ships as a separate 1.2 GB
+package on Linux — llama.cpp's converter is the robust path) ->
+ollama create -> gates through the real runtime. Two engineering
+findings en route: the runner decodes \uXXXX escapes for string
+states/criteria/instructions but passes OBJECT states through
+json.Compact undecoded (raw-UTF-8 wire is the client convention, now
+documented), and the first gates measurement was contaminated by
+exactly that (29% of synth2 val rows) — corrected re-measurement
+moved nothing (<0.01), so the negative is genuine.
+
+Verdict per the frozen rules: FAIL — fidelity bars missed on 5 of 8
+sources (goemotions 0.79, helpsteer2 0.76, synth2 0.88 + TV 0.27,
+fever 0.90-borderline, boolq dp 0.10-borderline) and the synth2
+quality floor badly (0.652 vs 0.85). PASS: runtime mechanics (zero
+outrank failures, render byte-exact), banking77/clinc150 near-perfect
+mimicry (0.96-0.97), MNLI 0.847, pooled ECE 0.038. No publish; the
+experimental path is not available (multiple gates, far from bars).
+Details in PREREG-KAPTEENI-OLLAMA.md Outcome.

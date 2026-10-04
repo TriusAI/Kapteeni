@@ -60,11 +60,17 @@ def build(adapter: str, base: str, out: str) -> int:
 
 
 def ask(port_model: str, state, question: dict) -> dict:
+    # ensure_ascii=False: the runner passes an OBJECT state's raw bytes
+    # through json.Compact (no escape decoding), so escaped \uXXXX would
+    # shift the model's input vs training. Raw UTF-8 is the wire
+    # convention for this model (and the runner decodes escapes for
+    # string states / criteria / instructions either way).
     body = json.dumps({"model": port_model, "state": state,
-                      "questions": {"q": question}}).encode()
+                       "questions": {"q": question}},
+                      ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(
         f"{GATE_HOST}/v1/systemone", data=body,
-        headers={"Content-Type": "application/json"})
+        headers={"Content-Type": "application/json; charset=utf-8"})
     try:
         return json.loads(urllib.request.urlopen(req, timeout=180)
                           .read())["answers"]["q"]
