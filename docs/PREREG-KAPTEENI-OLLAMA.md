@@ -170,3 +170,62 @@ labels, do not memorize destructively), per-source in-loop
 monitors, and possibly a committee of per-domain adapters. The
 v1-intuit and v1.1c ports inherit the finding that the machinery
 works and the fidelity bar is the hard part.
+
+---
+
+## Run 2 (pre-registered 2026-10-04, BEFORE any Run-2 measurement)
+
+**Committed before the run starts.** One run. The gate bars are
+UNCHANGED from Run 1 (weakening them would be gate-shopping); only
+the RECIPE changes, informed by Run 1's measured negative.
+
+### What Run 1 established and what this recipe bets on
+
+Run 1's fidelity pattern: near-perfect mimicry where the teacher is
+confident (banking77 0.963, clinc150 0.973), solid mid (synth 0.938,
+boolq 0.902, fever 0.899), and material loss exactly where the
+teacher's own distributions are flattest / the source is hardest
+(goemotions 0.788, helpsteer2 0.765, synth2 0.883 + TV 0.265). The
+bet: gradient exposure rebalanced toward the weak sources + fresh
+diverse synth2 lessons (new states, same generators) closes most of
+the fidelity gap; the synth2 quality floor is the honest
+uncertainty — Run 1 read 0.652 and fresh data is the only lever here
+that adds real generalization pressure.
+
+### Recipe (frozen)
+
+- Student: FRESH start from the teacher's merged backbone (same as
+  Run 1 — no warm start from Run 1's adapter: this is one run of a
+  complete recipe, not a continuation).
+- Lessons: the same 23,600 Run-1 teacher lessons, REBALANCED:
+  - CUTS (deterministic subsets, seed 0, of the non-val lessons):
+    banking77 → 600, clinc150 → 1,000, synth → 2,500 (all already
+    ≥0.94 fidelity; retained, not dropped)
+  - OVERSAMPLE (copies within the single epoch): goemotions ×3,
+    helpsteer2 ×3, fever ×2, boolq ×2
+  - synth2: all 5,691 non-val lessons kept
+  - FRESH synth2 lessons: 2,000 NEW rows from the same generator,
+    seed 99 (row_id prefix synth2x-; is_val members excluded from
+    training; the gate slice is UNCHANGED — the original synth2 val
+    only), taught by the same teacher into a separate dir the gates
+    never read
+  - Per-epoch total ≈ 31k lessons ≈ ~6.4k batches
+- One epoch (oversampling gives the weak sources an effective 3
+  passes without whole-set repetition); lr 1e-4 constant, budget
+  4096, seed 0, bf16, checkpointed, ckpt-every 150.
+- Per-source in-loop monitors (Run 1's process fix): every 300
+  steps, 40 val rows per source, all 8 sources — the run is
+  abortable honestly if a source collapses.
+
+### Gates: identical bars to Run 1, measured identically through the
+actual ollama runtime on the new artifact.
+
+### Decision rule
+
+Pass ALL → publish as zaaktinlam/kapteeni-v1-meticulous. Fail ANY →
+the port program PARKS: two runs, two documented negatives = the
+letter-distillation recipe as designed does not reach "roughly the
+same"; any further attempt requires a genuinely new mechanism
+(pre-registered separately), and the honest fallback for users who
+want Ollama access remains a documented experimental artifact only
+with explicit owner approval, which the current bars do NOT meet.
