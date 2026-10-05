@@ -73,3 +73,47 @@ does not go through letter logits).
 
 No benchmark items in training; val rows never trained; gates frozen
 before measurement; one run; honest negatives documented.
+## Outcome (2026-10-05, ~14:15) — NEGATIVE: no ship, but the
+mechanism bet is CONFIRMED
+
+One run (3,356 steps; peakier teacher + soft-dominant loss
+hard-weight 0.1). Gates through the actual ollama runtime on
+kapteeni-intuit-port (F16 GGUF):
+
+| gate | metic. R1 | metic. R2 | INTUIT | bar | verdict |
+|---|---|---|---|---|---|
+| banking77 ag / TV | 0.963 / 0.053 | 0.947 / 0.083 | 0.952 / 0.069 | 0.90 / 0.15 | PASS |
+| boolq ag / dp | 0.902 / 0.101 | 0.932 / 0.091 | 0.947 / 0.078 | 0.90 / 0.10 | PASS |
+| clinc150 ag / TV | 0.973 / 0.038 | 0.990 / 0.032 | 0.969 / 0.037 | 0.90 / 0.15 | PASS |
+| fever ag / dp | 0.899 / 0.106 | 0.949 / 0.059 | 0.968 / 0.078 | 0.90 / 0.10 | PASS |
+| synth ag / dp | 0.938 / 0.162 | 0.940 / 0.171 | 0.951 / **0.077** | 0.90 / 0.10 | PASS (new) |
+| synth2 ag / dp / TV | 0.883 / 0.154 / 0.265 | 0.900 / 0.217 / 0.279 | 0.893 / **0.114** / **0.127** | 0.90 / 0.10 / 0.15 | dp +0.014, TV PASSES, ag −0.007 |
+| goemotions ag / TV | 0.788 / 0.288 | 0.836 / 0.257 | 0.833 / **0.191** | 0.90 / 0.15 | FAIL (−0.067 / +0.041) |
+| helpsteer2 ag / TV | 0.765 / 0.202 | 0.784 / 0.229 | 0.797 / **0.130** | 0.90 / 0.15 | TV PASSES (new), ag −0.103 |
+| synth2-EN gold floor | 0.652 | 0.655 | **0.785** | 0.85 | FAIL (−0.065) |
+| MNLI | 0.847 | 0.873 | 0.887 | 0.80 | PASS |
+| ECE | 0.038 | 0.018 | 0.068 | 0.10 | PASS |
+| outrank errors | 0 | 0 | 0 | 0 | PASS |
+
+The shape-fidelity bet held: synth, synth2, and helpsteer2 TV all
+PASS now (0.077-0.130 vs 0.15-0.279 in the meticulous runs), synth2
+gold jumped 0.65 -> 0.785, and everything that failed does so by
+0.007-0.103 instead of 0.10-0.20. Four gates still fail:
+goemotions agreement (0.833) + TV (0.191), helpsteer2 agreement
+(0.797), synth2 agreement (0.893, seven thousandths under) and dp
+(0.114), and the synth2 gold floor (0.785).
+
+Per the frozen decision rule: no publish. The park-the-whole-program
+clause does NOT trigger — this run did not fail on the shape
+mechanism (shape largely passed); it failed on ARGMAX agreement, the
+deliberate trade-off of the 0.1 hard weight. The measured trade-off
+curve (0.5 hard = shape fails, 0.1 hard = agreement drifts) says the
+unexplored middle (0.2-0.3) is the credible next recipe, needing its
+own pre-registration. The synth2 gold floor (0.785) remains the
+letter-paradigm capability ceiling; only the Clef span-head format
+bypasses it.
+
+Artifacts kept: model_cache/kapteeni_intuit_ollama (+ merged, GGUF),
+kapteeni-intuit-port in the local ollama, gates.json in
+data_cache/ollama_port_intuit. Nothing published; the HF originals
+remain the reference.

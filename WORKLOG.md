@@ -1058,3 +1058,19 @@ Run 3: the 0.5-weight hard-CE term peaks the port's distributions
 where the teacher's shaped output is deliberately flat — a soft-
 dominant loss (hard term as small outrank auxiliary) is the next
 mechanism candidate, pre-registered separately if ever attempted.
+
+## 2026-10-05 — intuit port run 1: NEGATIVE by inches; shape bet confirmed
+
+The peakier-teacher hypothesis (user's call, pre-registered as the
+mechanism) worked: distilling v1-intuit (sharp serving constants)
+with the soft-dominant loss (0.1 hard) moved every shape-fidelity
+number dramatically — synth dp 0.17->0.077, synth2 TV 0.279->0.127,
+helpsteer2 TV 0.229->0.130 (all PASS now), synth2 gold 0.655->0.785.
+Four gates still fail, all by small margins: goemotions agreement
+0.833 + TV 0.191, helpsteer2 agreement 0.797, synth2 agreement 0.893
+(0.007 under) + dp 0.114 (0.014 over), synth2 gold floor 0.785
+(0.065 under). No publish per the frozen bars. The trade-off curve
+across the three runs (hard weight 0.5 -> shape fails; 0.1 ->
+argmax drifts) points at 0.2-0.3 as the next recipe; separate
+pre-reg required. Program not parked: this was not a shape-
+mechanism failure.
