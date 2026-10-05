@@ -148,3 +148,43 @@ the recommended path. The experimental-release clause from the
 meticulous pre-reg carries over: a SINGLE gate within 0.02 of its
 bar may be published with an explicit experimental label, owner
 approval required. No gate bars change.
+
+## Run-2 Outcome (2026-10-05, ~23:50) — NEGATIVE: the trade-off is
+not a dial; program PARKS per the frozen rule
+
+One run (3,356 steps, hard-CE weight 0.25). Gates through the
+actual runtime on kapteeni-intuit-port-r2:
+
+| gate | R1 (0.1) | R2 (0.25) | bar |
+|---|---|---|---|
+| banking77 ag / TV | 0.952 / 0.069 | 0.963 / 0.071 | 0.90 / 0.15 — PASS |
+| boolq ag / dp | 0.947 / 0.078 ✓ | 0.883 / **0.153** | 0.90 / 0.10 — FAIL, REGRESSED |
+| clinc150 | 0.969 / 0.037 | 0.976 / 0.040 | PASS |
+| fever ag / dp | 0.968 / 0.078 ✓ | 0.899 / **0.146** | 0.90 / 0.10 — FAIL, REGRESSED |
+| synth ag / dp | 0.951 / 0.077 ✓ | 0.919 / **0.166** | 0.90 / 0.10 — dp FAIL, REGRESSED |
+| synth2 ag / dp / TV | 0.893 / 0.114 / 0.127 | **0.911** ✓ / **0.198** / 0.137 ✓ | 0.90 / 0.10 / 0.15 |
+| goemotions ag / TV | 0.833 / 0.191 | 0.785 / 0.210 | 0.90 / 0.15 — FAIL |
+| helpsteer2 ag / TV | 0.797 / 0.130 | 0.791 / 0.146 | 0.90 / 0.15 — ag FAIL |
+| synth2 gold floor | 0.785 | 0.777 | 0.85 — FAIL |
+| MNLI / ECE / outrank | 0.887 / 0.068 / 0 | 0.813 / 0.035 / 0 | PASS |
+
+The dial hypothesis is disproven: 0.25 did not sit between 0.1 and
+0.5's behaviors — it moved synth2 agreement OVER its bar while
+regressing the noul sources' shapes that 0.1 had solved. The hard
+term's effect is source-dependent: noul shape fidelity is far more
+sensitive to it than synth2 argmax. Net: more and bigger failures
+than R1 (which remains the best of the four artifacts: 5 misses,
+margins 0.007-0.103).
+
+Four runs, two teachers, four documented negatives. Per this
+pre-registered decision rule: **the letter-distillation program
+parks.** What the record establishes: the mechanism delivers
+runtime mechanics (zero outrank errors everywhere), calibration
+(ECE 0.018-0.068), and most shapes — but cannot simultaneously hold
+argmax agreement, shape fidelity, and the synth2 capability floor
+across all sources; the binding constraint is the letter format
+itself. The experimental-release clause does not apply (many gates,
+several far from bars). Recommended path, recorded: the Clef
+span-head format research — the only Ollama-native mechanism whose
+readout does not go through letter logits. Nothing published; the
+HF originals remain the reference artifacts.

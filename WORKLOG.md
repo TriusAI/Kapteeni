@@ -1074,3 +1074,17 @@ across the three runs (hard weight 0.5 -> shape fails; 0.1 ->
 argmax drifts) points at 0.2-0.3 as the next recipe; separate
 pre-reg required. Program not parked: this was not a shape-
 mechanism failure.
+
+## 2026-10-05 late — intuit port run 2: NEGATIVE; the ollama
+letter-distillation program PARKS (four runs, four negatives)
+
+Hard-CE 0.25 disproved the dial hypothesis: synth2 agreement rose
+over its bar (0.911) but the noul sources' shape fidelity — 0.1's
+main achievement — regressed hard (boolq dp 0.078->0.153, fever
+0.078->0.146, synth 0.077->0.166). The loss weight redistributes
+failures between sources rather than approaching a sweet spot.
+Best artifact of the program: intuit run 1 (five small misses,
+0.007-0.103). Program parked per the frozen rule; recommendation
+recorded: the Clef span-head format research as the credible
+Ollama-native path. All four adapters, merged models, GGUFs, gate
+readings kept for inspection; nothing published.
