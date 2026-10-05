@@ -117,3 +117,34 @@ Artifacts kept: model_cache/kapteeni_intuit_ollama (+ merged, GGUF),
 kapteeni-intuit-port in the local ollama, gates.json in
 data_cache/ollama_port_intuit. Nothing published; the HF originals
 remain the reference.
+
+---
+
+## Run 2 (pre-registered 2026-10-05, before any Run-2 measurement)
+
+**Committed before the run. One run. Same bars.** Only the recipe
+weight changes, from the measured trade-off curve: three runs now
+place the hard-CE weight on a curve — 0.5 (meticulous runs: shape
+fails at TV 0.2-0.28) and 0.1 (this port's Run 1: shape passes at
+0.077-0.19 but argmax drifts to 0.79-0.89). Run 2 freezes
+**hard-CE weight 0.25** (soft 0.75) — the untested middle, chosen
+before measurement.
+
+Everything else identical to Run 1: same intuit teacher lessons
+(data_cache/ollama_port_intuit + extra), same rebalance and cuts,
+fresh student start from the intuit teacher's merged backbone,
+budget 8192, no recompute, lr 1e-4, one epoch, seed 0, per-source
+monitors every 300 steps.
+
+### Decision rule
+
+Pass ALL gates → publish as zaaktinlam/kapteeni-v1-intuit.
+Fail ANY → NO further letter-distillation runs anywhere in the
+program without a genuinely new mechanism pre-registered separately
+— with the intuitive reading that three total runs across two
+teachers, all failing, means the letter format's own ceiling is the
+binding constraint and the Clef span-head format research becomes
+the recommended path. The experimental-release clause from the
+meticulous pre-reg carries over: a SINGLE gate within 0.02 of its
+bar may be published with an explicit experimental label, owner
+approval required. No gate bars change.
